@@ -1,4 +1,4 @@
-This is an Image Segmentation algorithm using PDf thresholding and MRF generation.
+This is an Image Segmentation algorithm using PDF thresholding and MRF generation.
 
 There are two versions:
 1. Scalar algorithm - non-vectorized, non-parallelized.
