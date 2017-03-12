@@ -3,11 +3,20 @@
 #include <math.h>
 #include <unistd.h>
 
-#define TEMPERATURE 5
-#define ITERATIONS 20
-#define THRESHOLD 0.8
-// #define SECOND_ORDER
-// #define THIRD_ORDER
+// Higher temperature smoothens the image more. It's like a pre-filter.
+#define TEMPERATURE 15
+
+// The clearer the boundaries are the more you iterate through CDF thresholding.
+#define ITERATIONS 30
+
+// Higher threshold groups together more pixels together
+// The resulting image turns out to be brighter, but also more two-tone.
+#define THRESHOLD 0.3
+
+// Higher order MRF patches together clarifies the boundary more per iteration.
+// However, it could also blur the object boundary on noisy .
+#define SECOND_ORDER
+#define THIRD_ORDER
 
 #pragma pack(push, 1)
 typedef struct
