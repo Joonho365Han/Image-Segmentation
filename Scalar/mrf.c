@@ -6,7 +6,7 @@
 // Higher temperature smoothens the image more. It's like a pre-filter.
 #define TEMPERATURE 15
 
-// The clearer the boundaries are the more you iterate through CDF thresholding.
+// The more you iterate through CDF thresholding, the clearer the boundaries are.
 #define ITERATIONS 30
 
 // Higher threshold groups together more pixels together
