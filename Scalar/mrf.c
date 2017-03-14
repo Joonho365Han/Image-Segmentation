@@ -4,51 +4,40 @@
 #include <unistd.h>
 
 // Higher temperature smoothens the image more. It's like a pre-filter.
-#define TEMPERATURE 15
+// It will make more likely for pixels within object boundary to be grouped.
+#define TEMPERATURE 23
 
 // The more you iterate through CDF thresholding, the clearer the boundaries are.
-#define ITERATIONS 30
+// Eventually it will converge and yield diminishing returns.
+#define ITERATIONS 3 // is Just enough
 
-// Higher threshold groups together more pixels together
-// The resulting image turns out to be brighter, but also more two-tone.
-#define THRESHOLD 0.3
+// A threshold divides which pixels are assigned to which group.
+// A good threshold perfectly partitions the object from the background.
+#define THRESHOLD 0.85
 
-// Higher order MRF patches together clarifies the boundary more per iteration.
-// However, it could also blur the object boundary on noisy .
-#define SECOND_ORDER
-#define THIRD_ORDER
+// Higher order MRF makes it easier to tell if pixel is near object or not.
+// Image dimension is divided by PARTITION to determine the MRF order.
+// Higher PARTITION means lower MRF ORDER. (PARTITION = SIZE/ORDER)
+#define PARTITION 80
 
 #pragma pack(push, 1)
 typedef struct
 {
-    short int confirm_bmp;  // File type indicator. Must be 0x4d42 for .bmp.
-    int bfSize;             // Specifies the size in bytes of the bmp file
-    short int bfReserved1;  // Reserved; must be 0
-    short int bfReserved2;  // Reserved; must be 0
-    int bfOffBits;          // Specifies the offset in bytes from the bmpfileheader to the bmp bits
+    short int confirm_bmp;
+    int bfSize;
+    short int bfReserved1;
+    short int bfReserved2;
+    int bfOffBits;
 } BMPFILEHEADER;
 typedef struct
 {
-    unsigned int biSize;          // Specifies the number of bytes required by the struct
-    int biWidth;          // Specifies width in pixels
-    int biHeight;         // Species height in pixels
-    unsigned short int biPlanes;         // Specifies the number of color planes, must be 1
-    unsigned short int bibitPerPix;       // Specifies the number of bit per pixel
-    unsigned int biCompression;   // Spcifies the type of compression
-    unsigned int biImageSize;     // Size of image in bytes
-    int biXPelsPerMeter;  // Number of pixels per meter in x axis
-    int biYPelsPerMeter;  // Number of pixels per meter in y axis
-    unsigned int biClrUsed;       // Number of colors used by the bmp
-    unsigned int biClrImportant;  // Number of colors that are important
-    unsigned int redChannelBitmask;
-    unsigned int greenChannelBitmask;
-    unsigned int blueChannelBitmask;
-    unsigned int AlphaChannelBitmask;
-    unsigned int ColorSpaceType;
-    int ColorSpaceEndpoints;
-    unsigned int gammaChannelRed;
-    unsigned int gammaChannelGreen;
-    unsigned int gammaChannelBlue;
+    int biSize;
+    int biWidth;
+    int biHeight;
+    short int biPlanes;
+    short int bibitPerPix;
+    int biCompression;
+    int biImageSize;
 } BMPINFOHEADER;
 #pragma pack(pop)
 
@@ -119,21 +108,34 @@ int main(){
         return 0;
     }
 
-    // 2. Relate image areas by thresholding PDF of Markovian Gibbs Probability
-    //    (Refer to: Image Prediction)
-    int h, i, j, k;
+    // 2. Copy the original image in a separate buffer and leave the original untouched.
+    unsigned char *img_copy = (unsigned char*) malloc(img_info.biImageSize);
     unsigned char *img_mask = (unsigned char*) malloc(img_info.biImageSize);
+    int g;
+    for (g = 0; g < img_info.biImageSize; g++)
+    {
+        img_copy[g] = img[g];
+        img_mask[g] = img[g];
+    }
+
+    // 3. Relate image areas by thresholding PDF of Markovian Gibbs Probability
+    //    (Refer to: Image Prediction)
     int byte_depth  = img_info.bibitPerPix / 8;
-    int byte_padd   = (4 - img_info.biWidth * byte_depth % 4) % 4;
+    int byte_padd   = (4 - img_info.biWidth * byte_depth & 0x3) & 0x3;
     int byte_width  = img_info.biWidth * byte_depth + byte_padd;
-    int byte_offset = 1;
-        #ifdef SECOND_ORDER
-        byte_offset = 2;
-        #endif
-        #ifdef THIRD_ORDER
-        byte_offset = 3;
-        #endif
+    int byte_offset = (img_info.biWidth < img_info.biHeight) ? img_info.biWidth / PARTITION : img_info.biHeight / PARTITION;
+    int h, i, j, k;
     for (h = 0; h < ITERATIONS; h++)
+    {
+        //  In the beginning of every iteration:
+        //      img_copy is the one that was iterated,
+        //      img_mask is the result of iteration.
+        //  Data always flows from img_copy -> img_mask.
+        //  Switch these two to modify the content of img_mask again.
+        unsigned char *img_to_modify = img_mask;
+        img_mask = img_copy;
+        img_copy = img_to_modify;
+
         for (i = byte_offset; i < img_info.biHeight-byte_offset; i++)
             for (j = byte_offset; j < img_info.biWidth-byte_offset; j++)
                 for (k = 0; k < byte_depth; k++)
@@ -148,34 +150,11 @@ int main(){
                     int lum;
                     for (lum = 0; lum <= 255; lum++)
                     {
-                        int Eq  = (img[(i-1)*byte_width + j*byte_depth + k] != (unsigned char) lum) ? 5 : 0;
-                            Eq += (img[(i+1)*byte_width + j*byte_depth + k] != (unsigned char) lum) ? 5 : 0;
-                            Eq += (img[i*byte_width + (j-1)*byte_depth + k] != (unsigned char) lum) ? 5 : 0;
-                            Eq += (img[i*byte_width + (j+1)*byte_depth + k] != (unsigned char) lum) ? 5 : 0;
-                            #ifdef SECOND_ORDER
-                            Eq += (img[(i-1)*byte_width + (j-1)*byte_depth + k] != (unsigned char) lum) ? 5 : 0;
-                            Eq += (img[(i-1)*byte_width + (j+1)*byte_depth + k] != (unsigned char) lum) ? 5 : 0;
-                            Eq += (img[(i+1)*byte_width + (j-1)*byte_depth + k] != (unsigned char) lum) ? 5 : 0;
-                            Eq += (img[(i+1)*byte_width + (j+1)*byte_depth + k] != (unsigned char) lum) ? 5 : 0;
-                            Eq += (img[(i-2)*byte_width + j*byte_depth + k] != (unsigned char) lum) ? 5 : 0;
-                            Eq += (img[(i+2)*byte_width + j*byte_depth + k] != (unsigned char) lum) ? 5 : 0;
-                            Eq += (img[i*byte_width + (j-2)*byte_depth + k] != (unsigned char) lum) ? 5 : 0;
-                            Eq += (img[i*byte_width + (j+2)*byte_depth + k] != (unsigned char) lum) ? 5 : 0;
-                            #endif
-                            #ifdef THIRD_ORDER
-                            Eq += (img[(i-2)*byte_width + (j+1)*byte_depth + k] != (unsigned char) lum) ? 5 : 0;
-                            Eq += (img[(i-2)*byte_width + (j-1)*byte_depth + k] != (unsigned char) lum) ? 5 : 0;
-                            Eq += (img[(i+2)*byte_width + (j+1)*byte_depth + k] != (unsigned char) lum) ? 5 : 0;
-                            Eq += (img[(i+2)*byte_width + (j-1)*byte_depth + k] != (unsigned char) lum) ? 5 : 0;
-                            Eq += (img[(i+1)*byte_width + (j-2)*byte_depth + k] != (unsigned char) lum) ? 5 : 0;
-                            Eq += (img[(i-1)*byte_width + (j-2)*byte_depth + k] != (unsigned char) lum) ? 5 : 0;
-                            Eq += (img[(i+1)*byte_width + (j+2)*byte_depth + k] != (unsigned char) lum) ? 5 : 0;
-                            Eq += (img[(i-1)*byte_width + (j+2)*byte_depth + k] != (unsigned char) lum) ? 5 : 0;
-                            Eq += (img[(i-3)*byte_width + j*byte_depth + k] != (unsigned char) lum) ? 5 : 0;
-                            Eq += (img[(i+3)*byte_width + j*byte_depth + k] != (unsigned char) lum) ? 5 : 0;
-                            Eq += (img[i*byte_width + (j-3)*byte_depth + k] != (unsigned char) lum) ? 5 : 0;
-                            Eq += (img[i*byte_width + (j+3)*byte_depth + k] != (unsigned char) lum) ? 5 : 0;
-                            #endif
+                        int l, m, Eq = 0, order = byte_offset*byte_offset;
+                        for (l = -byte_offset; l <= byte_offset; l++)
+                            for (m = -byte_offset; m <= byte_offset; m++)
+                                if (l*l + m*m <= order)
+                                    Eq += (img_copy[(i+l)*byte_width + (j+m)*byte_depth + k] != (unsigned char) lum) ? 5 : 0;
                         gibbs_CDF[lum+1] = gibbs_CDF[lum] + exp(-Eq/TEMPERATURE);
                     }
 
@@ -186,10 +165,18 @@ int main(){
                             img_mask[i*byte_width+j*byte_depth+k] = (unsigned char) lum;
                             lum = 256;
                         }
+                    if (i%100 == 0 && j%100 == 0 && k == byte_depth-1)
+                        printf("Pixel %d,%d,%d done.\n", i,j,k);
                 }
+        printf("Iteration %d done.\n", h+1);
+    }
 
-    //  5. Save bitmap
-    status = overwrite_bitmap(img_name, &img_mask);
+    // 4. Boogey segmentation code
+    for (g = 0; g < img_info.biImageSize; g++)
+        img[g] = (img_mask[g] == img_mask[img_info.biImageSize/2]) ? img[g] : 0;
+
+    //  6. Save bitmap
+    status = overwrite_bitmap(img_name, &img);
     if (status == -1) {
         printf("ERROR: Could not open file\n");
         return 0;

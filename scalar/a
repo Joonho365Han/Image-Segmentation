@@ -1,5 +1,5 @@
 #!/bin/bash
 
-cp image_backup.bmp image.bmp
+cp test2.bmp image.bmp
 gcc mrf.c -O3
 ./a.out
