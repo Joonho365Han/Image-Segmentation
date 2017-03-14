@@ -1,5 +1,5 @@
 #!/bin/bash
 
 cp test2.bmp image.bmp
-gcc mrf.c -O3
+gcc segmentation.c -O3
 ./a.out
