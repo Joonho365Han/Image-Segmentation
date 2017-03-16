@@ -121,6 +121,10 @@ int main(){
 
     // 3. Relate image areas by thresholding PDF of Markovian Gibbs Probability
     //    (Refer to: Image Prediction)
+    /*
+        byte_depth : how many bytes are per pixel.
+        byte_padd  : 
+    */
     int byte_depth  = img_info.bibitPerPix / 8;
     int byte_padd   = (4 - img_info.biWidth * byte_depth & 0x3) & 0x3;
     int byte_width  = img_info.biWidth * byte_depth + byte_padd;
