@@ -94,17 +94,18 @@ int main(){
 
     //  1. Load bitmap
     char          *img_name = "image.bmp";
+    char          *img_mask_name = "image_mask.bmp";
     BMPINFOHEADER  img_info;
     unsigned char *img;
     int status = load_bitmap(img_name, &img_info, &img);
     if (status == -1) {
-        printf("ERROR: File DNE\n");
+        printf("ERROR: 1. File DNE\n");
         return 0;
     } else if (status == -2){
-        printf("ERROR: Could not allocate memory\n");
+        printf("ERROR: 2. Could not allocate memory\n");
         return 0;
     } else if (status != 0) {
-        printf("ERROR: Only read %d bytes\n", status);
+        printf("ERROR: 3. Only read %d bytes\n", status);
         return 0;
     }
 
@@ -148,9 +149,9 @@ int main(){
                                                 // generation easier by having an index 0
                                                 // for lum -1, whose gibbs_PDF is 0.
                     int lum;
-                    for (lum = 0; lum <= 255; lum++)
+                    for (lum = 0; lum <= 255; lum++) ///////////////// Optimizable
                     {
-                        int l, m, Eq = 0, order = byte_offset*byte_offset;
+                        int l, m, Eq = 0, order = byte_offset*byte_offset; /////////// Optimizable
                         for (l = -byte_offset; l <= byte_offset; l++)
                             for (m = -byte_offset; m <= byte_offset; m++)
                                 if (l*l + m*m <= order)
@@ -165,23 +166,31 @@ int main(){
                             img_mask[i*byte_width+j*byte_depth+k] = (unsigned char) lum;
                             lum = 256;
                         }
-                    if (i%100 == 0 && j%100 == 0 && k == byte_depth-1)
-                        printf("Pixel %d,%d,%d done.\n", i,j,k);
                 }
         printf("Iteration %d done.\n", h+1);
     }
 
-    // 4. Boogey segmentation code
+    // 4. Boogey segmentation code ///////////////////// Optimizable
     for (g = 0; g < img_info.biImageSize; g++)
         img[g] = (img_mask[g] == img_mask[img_info.biImageSize/2]) ? img[g] : 0;
 
-    //  6. Save bitmap
+    //  6. Save segmented image
     status = overwrite_bitmap(img_name, &img);
     if (status == -1) {
-        printf("ERROR: Could not open file\n");
+        printf("ERROR: 4. Could not open file\n");
         return 0;
     } else if (status != 0) {
-        printf("ERROR: Only wrote %d bytes\n", status);
+        printf("ERROR: 5. Only wrote %d bytes\n", status);
+        return 0;
+    }
+
+    //  7. Save image mask
+    status = overwrite_bitmap(img_mask_name, &img_mask);
+    if (status == -1) {
+        printf("ERROR: 6. Could not open file\n");
+        return 0;
+    } else if (status != 0) {
+        printf("ERROR: 7. Only wrote %d bytes\n", status);
         return 0;
     }
 
