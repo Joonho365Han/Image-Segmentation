@@ -31,13 +31,13 @@ typedef struct
 } BMPFILEHEADER;
 typedef struct
 {
-    int biSize;
-    int biWidth;
-    int biHeight;
-    short int biPlanes;
-    short int bibitPerPix;
-    int biCompression;
-    int biImageSize;
+    int Size;
+    int Width;
+    int Height;
+    short int Planes;
+    short int bitPerPix;
+    int Compression;
+    int ImageSize;
 } BMPINFOHEADER;
 #pragma pack(pop)
 
@@ -53,7 +53,7 @@ int load_bitmap(char *filename, BMPINFOHEADER *bmpInfoHeader, unsigned char **im
     fread(bmpInfoHeader, sizeof(BMPINFOHEADER), 1, filePtr);
 
     //  3. malloc for bitmap
-    int imgSize = bmpInfoHeader->biImageSize;
+    int imgSize = bmpInfoHeader->ImageSize;
     *img = (unsigned char*) malloc(imgSize*sizeof(unsigned char));
     if (*img == NULL) return -2;
 
