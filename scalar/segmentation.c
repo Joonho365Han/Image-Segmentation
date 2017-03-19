@@ -81,7 +81,7 @@ int overwrite_bitmap(char *filename, unsigned char **img)
 
     //  3. Write all file info
     fseek(filePtr, bmpFileHeader.bfOffBits, SEEK_SET);
-    int imgSize = bmpInfoHeader.biImageSize;
+    int imgSize = bmpInfoHeader.ImageSize;
     int count = fwrite(*img, sizeof(unsigned char), imgSize, filePtr);
     if (count == 0) printf("ERROR: Could not write anything\n");
     if (count != imgSize) return count;
@@ -110,10 +110,10 @@ int main(){
     }
 
     // 2. Copy the original image in a separate buffer and leave the original untouched.
-    unsigned char *img_copy = (unsigned char*) malloc(img_info.biImageSize);
-    unsigned char *img_mask = (unsigned char*) malloc(img_info.biImageSize);
+    unsigned char *img_copy = (unsigned char*) malloc(img_info.ImageSize);
+    unsigned char *img_mask = (unsigned char*) malloc(img_info.ImageSize);
     int g;
-    for (g = 0; g < img_info.biImageSize; g++)
+    for (g = 0; g < img_info.ImageSize; g++)
     {
         img_copy[g] = img[g];
         img_mask[g] = img[g];
@@ -122,13 +122,19 @@ int main(){
     // 3. Relate image areas by thresholding PDF of Markovian Gibbs Probability
     //    (Refer to: Image Prediction)
     /*
-        byte_depth : how many bytes are per pixel.
-        byte_padd  : 
+        These are some variable descriptions. 
+        It'll be easier to understand if you read Bitmap Wikipedia.
+
+        byte_depth  : how many bytes are per pixel.
+        byte_padd   : how many bytes used to align the rows by 4 bytes
+        byte_width  : how many bytes are per row INCLUDING the padding
+        byte_offset : the radius that bounds what pixels are considered neighbors in MRF
     */
-    int byte_depth  = img_info.bibitPerPix / 8;
-    int byte_padd   = (4 - img_info.biWidth * byte_depth & 0x3) & 0x3;
-    int byte_width  = img_info.biWidth * byte_depth + byte_padd;
-    int byte_offset = (img_info.biWidth < img_info.biHeight) ? img_info.biWidth / PARTITION : img_info.biHeight / PARTITION;
+    int byte_depth  = img_info.bitPerPix / 8;
+    int byte_padd   = (4 - img_info.Width * byte_depth & 0x3) & 0x3;
+    int byte_width  = img_info.Width * byte_depth + byte_padd;
+    int byte_offset = (img_info.Width < img_info.Height) ? 
+                        img_info.Width/PARTITION : img_info.Height/PARTITION;
     int h, i, j, k;
     for (h = 0; h < ITERATIONS; h++)
     {
@@ -141,8 +147,8 @@ int main(){
         img_mask = img_copy;
         img_copy = img_to_modify;
 
-        for (i = byte_offset; i < img_info.biHeight-byte_offset; i++)
-            for (j = byte_offset; j < img_info.biWidth-byte_offset; j++)
+        for (i = byte_offset; i < img_info.Height-byte_offset; i++)
+            for (j = byte_offset; j < img_info.Width-byte_offset; j++)
                 for (k = 0; k < byte_depth; k++)
                 {
                     // Generate Gibbs CDF using Markovian Neighbors
@@ -175,8 +181,8 @@ int main(){
     }
 
     // 4. Boogey segmentation code ///////////////////// Optimizable
-    for (g = 0; g < img_info.biImageSize; g++)
-        img[g] = (img_mask[g] == img_mask[img_info.biImageSize/2]) ? img[g] : 0;
+    for (g = 0; g < img_info.ImageSize; g++)
+        img[g] = (img_mask[g] == img_mask[img_info.ImageSize/2]) ? img[g] : 0;
 
     //  6. Save segmented image
     status = overwrite_bitmap(img_name, &img);
