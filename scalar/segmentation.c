@@ -188,8 +188,7 @@ int main(){
     }
     
     // 4. Produce Mask from Thresholded MRF
-    printf("\nStarting Ours\n");
-    //int X = img_info.Width;
+    
     int midY = img_info.Width / 2 * byte_depth;
     int midX = img_info.Height /2;
     int rowLength = byte_width;
@@ -199,18 +198,10 @@ int main(){
     {
         lum[i] = img_mask[midX * rowLength + midY + i];
     }
-    //lum[0] = img_mask[midX * rowLength + midY];
-    //lum[1] = img_mask[midX * rowLength + midY + 1];
-    //lum[2] = img_mask[midY * rowLength + midY + 2];
-    //printf("\nr = %u, g = %u, b = %u\n", lum[0], lum[1], lum[2]);
     struct Node * ToVisit = NULL; //linked list holding nodes to be visited
     ToVisit = malloc(sizeof(struct Node));
     struct Node * Visited = NULL; //linked list holding nodes that have been visited
-    //Visited = malloc(sizeof(struct Node));
-    //original array to be analyzed
     unsigned char *BFSArray = (unsigned char*) malloc(img_info.ImageSize);
-    printf("\n %d \n", img_info.ImageSize);
-    //int BFSArray[]; //destination array to put results
     ToVisit->next = NULL;
     ToVisit->row = midX; //set head of to visit list to center pixel
     ToVisit->column = midY;
@@ -226,11 +217,9 @@ int main(){
     int upCheck;
     int leftCheck;
     int rightCheck;
+    int depthCheck;
     
-    //for (j = 0; j < img_info.ImageSize; j++)
-    //{
-    //    printf("%u ", img_mask[j]);
-    //}
+    
     for (j = 0; j < img_info.ImageSize; j++)
     {
         BFSArray[j] = 0;
@@ -239,16 +228,13 @@ int main(){
     while (ToVisit != NULL)
     {
         
-        int downCheck = 0; //0 if not in visited list, 1 if in visited list
-        int upCheck = 0;
-        int leftCheck = 0;
-        int rightCheck = 0;
-        if (count < 5)
-        printf("\n row  = %d column = %d\n", ToVisit->row, ToVisit->column);
+        downCheck = 0; //0 if not in visited list, 1 if in visited list
+        upCheck = 0;
+        leftCheck = 0;
+        rightCheck = 0;
+        depthCheck = 0;
         leftX = ToVisit->row;
         leftY = ToVisit->column - byte_depth; //moving 3 values to left to get previous value of same color
-        if(count < 5)
-        printf("\nleftX = %d, leftY = %d\n", leftX, leftY);
         rightX = ToVisit->row;
         rightY = ToVisit->column + byte_depth;//moving 3 values to right to get next value of same color
         upX = ToVisit->row - 1; //move 1 row up to get top neighbor
@@ -256,17 +242,23 @@ int main(){
         downX = ToVisit->row + 1; //move 1 row down to get bottom neighbor
         downY = ToVisit->column;
         struct Node * current = NULL;
-        //current = malloc(sizeof(struct Node));
         current = Visited;
-        if (img_mask[ToVisit->row * rowLength + ToVisit->column]    == lum[0])
+        
+        for (k=0;k < byte_depth; k++) //check to see if color value matches goal values
         {
-                   while (current != NULL) //see if neighbor nodes have been visited
+            if (img_mask[ToVisit->row * rowLength + ToVisit->column] != lum[k])
+            {
+                depthCheck = 1; //if it doesnt match, make check 1
+            }
+        }
+        if (depthCheck == 0) //if the color matches, find the neighbors
         {
+            while (current != NULL) //see if neighbor nodes have been visited
+            {
             
             if ((leftX == current->row && leftY == current->column) || leftY < 0 )
             {
                 leftCheck = 1;
-                //printf("\n left y = %d \n", leftY);
             }
             if ((rightX == current->row && rightY == current->column) || rightY > img_info.Width *byte_depth)
             {
@@ -282,18 +274,17 @@ int main(){
             }
             
             current = current->next;
-        }
+            }
             
         
-        current = ToVisit;
+            current = ToVisit;
             
-            while (current != NULL) //see if neighbor nodes have been visited
+            while (current != NULL) //see if neighbor nodes are already schedule to be visited
             {
                 
                 if ((leftX == current->row && leftY == current->column) )
                 {
                     leftCheck = 1;
-                    //printf("\n left y = %d \n", leftY);
                 }
                 if ((rightX == current->row && rightY == current->column))
                 {
@@ -312,77 +303,68 @@ int main(){
             }
             current = ToVisit;
         
-        //printf("\nafter to visit\n");
-        while( current != NULL && current->next != NULL)
-        {
-            current = current->next; //find last node
-            //printf("\n in the while\n");
-        }
-        //printf("\nafter to while\n");
-        //Visited = malloc(sizeof(struct Node));
-        if (leftCheck == 0) //if not visited, add to to visit
-        {
-            
-            struct Node * newOne = NULL;
-            newOne = malloc(sizeof(struct Node));
-            newOne->row = leftX;
-            newOne->column = leftY;
-            newOne->next = NULL;
-            current->next= newOne;
-            current = current->next;
-            
-        }
-        //printf("\nafter to first if\n");
-        if (rightCheck == 0)
-        {
-            
-            struct Node * newOne = NULL;
-            newOne = malloc(sizeof(struct Node));
-            newOne->row = rightX;
-            newOne->column = rightY;
-            newOne->next = NULL;
-            current->next= newOne;
-            current = current->next;
-
-        }
-        //printf("\nafter to secind if\n");
-        if (upCheck == 0)
-        {
-            
-            struct Node * newOne = NULL;
-            newOne = malloc(sizeof(struct Node));
-            newOne->row = upX;
-            newOne->column = upY;
-            newOne->next = NULL;
-            current->next= newOne;
-            current = current->next;
-
-        }
-        if (downCheck == 0)
-        {
-            
-            struct Node * newOne = NULL;
-            newOne = malloc(sizeof(struct Node));
-            newOne->row = downX;
-            newOne->column = downY;
-            newOne->next = NULL;
-            current->next= newOne;
-            current = current->next;
-
-        }
-        }
-        if (byte_depth == 3)
-        {
-            if (img_mask[ToVisit->row * rowLength + ToVisit->column]    == lum[0] &&
-                img_mask[ToVisit->row * rowLength + ToVisit->column +1] == lum[1] &&
-                img_mask[ToVisit->row * rowLength + ToVisit->column +2] == lum[2])
+            while( current != NULL && current->next != NULL)
             {
-                BFSArray[ToVisit->row * rowLength + ToVisit->column]    = 1;
-                BFSArray[ToVisit->row * rowLength + ToVisit->column +1] = 1;
-                BFSArray[ToVisit->row * rowLength + ToVisit->column +2] = 1;
-            } //if all three values match, set corresponding index in final matrix to 1
+                current = current->next; //find last node
+            }
+        
+            if (leftCheck == 0) //if not visited, add to to visit
+            {
+            
+                struct Node * newOne = NULL;
+                newOne = malloc(sizeof(struct Node));
+                newOne->row = leftX;
+                newOne->column = leftY;
+                newOne->next = NULL;
+                current->next= newOne;
+                current = current->next;
+            
+            }
+        
+            if (rightCheck == 0) //if not visited, add to to visit
+            {
+            
+                struct Node * newOne = NULL;
+                newOne = malloc(sizeof(struct Node));
+                newOne->row = rightX;
+                newOne->column = rightY;
+                newOne->next = NULL;
+                current->next= newOne;
+                current = current->next;
+
+            }
+       
+            if (upCheck == 0) //if not visited, add to to visit
+            {
+            
+                struct Node * newOne = NULL;
+                newOne = malloc(sizeof(struct Node));
+                newOne->row = upX;
+                newOne->column = upY;
+                newOne->next = NULL;
+                current->next= newOne;
+                current = current->next;
+
+            }
+            if (downCheck == 0) //if not visited, add to to visit
+            {
+            
+                struct Node * newOne = NULL;
+                newOne = malloc(sizeof(struct Node));
+                newOne->row = downX;
+                newOne->column = downY;
+                newOne->next = NULL;
+                current->next= newOne;
+                current = current->next;
+
+            }
+    
+            for (k=0;k < byte_depth; k++) //Make corresponding index in BFSArray 1
+            {
+                BFSArray[ToVisit->row * rowLength + ToVisit->column + k] = 1;
+            }
             current = Visited;
-            while (current != NULL && current->next != NULL)
+            while (current != NULL && current->next != NULL) //Marked node as visited
             {
                 current = current->next;
             }
@@ -399,93 +381,17 @@ int main(){
             {
                 current->next = newNode;
             }
-            
-        }
-        if (byte_depth == 1)
-        {
-            
 
             
-            if (img_mask[ToVisit->row * rowLength + ToVisit->column]    == lum[0])
-            {
-                
-                
-                BFSArray[ToVisit->row * rowLength + ToVisit->column]    = 1;
-                
-            }
-            
-            current = Visited;
-            while (current != NULL && current->next != NULL)
-            {
-            current = current->next;
-            }
-            
-            struct Node * newNode = NULL;
-            newNode = malloc(sizeof(struct Node));
-            
-            newNode->row = ToVisit->row;
-            
-            newNode->column = ToVisit->column;
-            newNode->next = NULL;
-            
-            if (current == NULL)
-            {
-                Visited = newNode;
-            }
-            else
-            {
-                current->next = newNode;
-            }
-            
-        }
-        
-        if (byte_depth == 2)
-        {
-            if (img_mask[ToVisit->row * rowLength + ToVisit->column]    == lum[0] &&
-                img_mask[ToVisit->row * rowLength + ToVisit->column +1] == lum[1])
-            {
-                BFSArray[ToVisit->row * rowLength + ToVisit->column]    = 1;
-                BFSArray[ToVisit->row * rowLength + ToVisit->column +1] = 1;
-            }
-            current = Visited;
-            while (current != NULL && current->next != NULL)
-            {
-            current = current->next;
-            }
-            struct Node * newNode = NULL;
-            newNode = malloc(sizeof(struct Node));
-            newNode->row = ToVisit->row;
-            newNode->column = ToVisit->column;
-            newNode->next = NULL;
-            if (current == NULL)
-            {
-                Visited = newNode;
-            }
-            else
-            {
-                current->next = newNode;
-            }
         }
        
-            
-            printf("%d\n", count);
-        
-        
-        count++;
         struct Node * nextOne;
-        
         nextOne = ToVisit->next;
         free(ToVisit);
-        ToVisit = nextOne;
+        ToVisit = nextOne; //free node and move on to the next on the list
         
         
     }
-    printf("\nEND\n");
-    //for (j = 0; j < img_info.ImageSize; j++)
-    //{
-    //    printf("%u ", BFSArray[j]);
-    //}
-
     // 5. Apply mask to image
     for (g = 0; g < img_info.ImageSize; g++)
         img[g] *= BFSArray[g];
@@ -512,5 +418,6 @@ int main(){
 
     free(img);
     free(img_mask);
+    free(BFSArray);
     return 0;
 }
