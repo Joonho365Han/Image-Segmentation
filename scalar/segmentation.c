@@ -208,13 +208,10 @@ int main(){
     struct Node * Visited = NULL; //linked list holding nodes that have been visited
     //Visited = malloc(sizeof(struct Node));
     //original array to be analyzed
-    printf("\nCheck malloc\n");
     unsigned char *BFSArray = (unsigned char*) malloc(img_info.ImageSize);
     printf("\n %d \n", img_info.ImageSize);
-    printf("\nAfter malloc\n");
     //int BFSArray[]; //destination array to put results
     ToVisit->next = NULL;
-    printf("\nCheck after NULL\n");
     ToVisit->row = midX; //set head of to visit list to center pixel
     ToVisit->column = midY;
     int leftX; //used to store the x and y values of four neighbors
@@ -229,8 +226,7 @@ int main(){
     int upCheck;
     int leftCheck;
     int rightCheck;
-    printf("byte depth %d ", byte_depth);
-    printf("\nCheck 1\n");
+    
     //for (j = 0; j < img_info.ImageSize; j++)
     //{
     //    printf("%u ", img_mask[j]);
@@ -247,8 +243,12 @@ int main(){
         int upCheck = 0;
         int leftCheck = 0;
         int rightCheck = 0;
+        if (count < 5)
+        printf("\n row  = %d column = %d\n", ToVisit->row, ToVisit->column);
         leftX = ToVisit->row;
         leftY = ToVisit->column - byte_depth; //moving 3 values to left to get previous value of same color
+        if(count < 5)
+        printf("\nleftX = %d, leftY = %d\n", leftX, leftY);
         rightX = ToVisit->row;
         rightY = ToVisit->column + byte_depth;//moving 3 values to right to get next value of same color
         upX = ToVisit->row - 1; //move 1 row up to get top neighbor
@@ -258,12 +258,15 @@ int main(){
         struct Node * current = NULL;
         //current = malloc(sizeof(struct Node));
         current = Visited;
-        while (current != NULL) //see if neighbor nodes have been visited
+        if (img_mask[ToVisit->row * rowLength + ToVisit->column]    == lum[0])
         {
+                   while (current != NULL) //see if neighbor nodes have been visited
+        {
+            
             if ((leftX == current->row && leftY == current->column) || leftY < 0 )
             {
                 leftCheck = 1;
-                
+                //printf("\n left y = %d \n", leftY);
             }
             if ((rightX == current->row && rightY == current->column) || rightY > img_info.Width *byte_depth)
             {
@@ -280,9 +283,34 @@ int main(){
             
             current = current->next;
         }
-        
+            
         
         current = ToVisit;
+            
+            while (current != NULL) //see if neighbor nodes have been visited
+            {
+                
+                if ((leftX == current->row && leftY == current->column) )
+                {
+                    leftCheck = 1;
+                    //printf("\n left y = %d \n", leftY);
+                }
+                if ((rightX == current->row && rightY == current->column))
+                {
+                    rightCheck = 1;
+                }
+                if ((upX == current->row && upY == current->column))
+                {
+                    upCheck = 1;
+                }
+                if ((downX == current->row && downY == current->column))
+                {
+                    downCheck = 1;
+                }
+                
+                current = current->next;
+            }
+            current = ToVisit;
         
         //printf("\nafter to visit\n");
         while( current != NULL && current->next != NULL)
@@ -292,7 +320,7 @@ int main(){
         }
         //printf("\nafter to while\n");
         //Visited = malloc(sizeof(struct Node));
-                if (leftCheck == 0) //if not visited, add to to visit
+        if (leftCheck == 0) //if not visited, add to to visit
         {
             
             struct Node * newOne = NULL;
@@ -301,77 +329,48 @@ int main(){
             newOne->column = leftY;
             newOne->next = NULL;
             current->next= newOne;
+            current = current->next;
             
         }
         //printf("\nafter to first if\n");
         if (rightCheck == 0)
         {
-            if (count == 94193)
-            {
-                printf("\nme right\n");
-            }
+            
             struct Node * newOne = NULL;
             newOne = malloc(sizeof(struct Node));
             newOne->row = rightX;
             newOne->column = rightY;
             newOne->next = NULL;
             current->next= newOne;
+            current = current->next;
+
         }
         //printf("\nafter to secind if\n");
         if (upCheck == 0)
         {
-            if (count == 94193)
-            {
-                printf("\nme up\n");
-            }
+            
             struct Node * newOne = NULL;
             newOne = malloc(sizeof(struct Node));
             newOne->row = upX;
             newOne->column = upY;
             newOne->next = NULL;
             current->next= newOne;
+            current = current->next;
+
         }
-        //printf("\nafter third if\n");
         if (downCheck == 0)
         {
-            if (count == 94193)
-            {
-                printf("\nme down\n");
-            }
+            
             struct Node * newOne = NULL;
-            if (count == 94193)
-            {
-                printf("\nme down1\n");
-            }
             newOne = malloc(sizeof(struct Node));
-            if (count == 94193)
-            {
-                printf("\nme down2\n");
-            }
             newOne->row = downX;
-            if (count == 94193)
-            {
-                printf("\nme down3\n");
-            }
             newOne->column = downY;
-            if (count == 94193)
-            {
-                printf("\nme down4\n");
-            }
             newOne->next = NULL;
-            if (count == 94193)
-            {
-                printf("\nme down5\n");
-            }
             current->next= newOne;
-            if (count == 94193)
-            {
-                printf("\nme down6\n");
-            }
+            current = current->next;
+
         }
-        
-        //printf("\nCheck 7\n");
-        //check rgb values
+        }
         if (byte_depth == 3)
         {
             if (img_mask[ToVisit->row * rowLength + ToVisit->column]    == lum[0] &&
@@ -404,56 +403,31 @@ int main(){
         }
         if (byte_depth == 1)
         {
-            if (count > 94000)
-            {
-                printf("\nCheckingInside\n");
-            }
+            
 
             
             if (img_mask[ToVisit->row * rowLength + ToVisit->column]    == lum[0])
             {
-                if (count > 94000)
-                {
-                    printf("\nCheckingInsideInside\n");
-                    printf("\n Count = %d row %d colum %d\n", count, ToVisit->row, ToVisit->column);
-                }
+                
                 
                 BFSArray[ToVisit->row * rowLength + ToVisit->column]    = 1;
-                if (count > 94000)
-                {
-                    printf("\nCheckingInsideAgain\n");
-                }
+                
             }
-            if (count > 94000)
-            {
-                printf("\nCheckingInside1\n");
-            }
+            
             current = Visited;
             while (current != NULL && current->next != NULL)
             {
             current = current->next;
             }
-            if (count > 94000)
-            {
-                printf("\nCheckingInside2\n");
-            }
+            
             struct Node * newNode = NULL;
             newNode = malloc(sizeof(struct Node));
-            if (count > 94000)
-            {
-                printf("\nCheckingInside3\n");
-            }
+            
             newNode->row = ToVisit->row;
-            if (count > 94000)
-            {
-                printf("\nCheckingInside4\n");
-            }
+            
             newNode->column = ToVisit->column;
             newNode->next = NULL;
-            if (count > 94000)
-            {
-                printf("\nCheckingInside5\n");
-            }
+            
             if (current == NULL)
             {
                 Visited = newNode;
@@ -462,10 +436,7 @@ int main(){
             {
                 current->next = newNode;
             }
-            if (count > 94000)
-            {
-                printf("\nCheckingInside6\n");
-            }
+            
         }
         
         if (byte_depth == 2)
@@ -495,11 +466,10 @@ int main(){
                 current->next = newNode;
             }
         }
-        if (count > 4773)
-        {
+       
             
             printf("%d\n", count);
-        }
+        
         
         count++;
         struct Node * nextOne;
