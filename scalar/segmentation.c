@@ -186,17 +186,12 @@ int main(){
                 }
         printf("Iteration %d done.\n", h+1);
     }
-
-    // 4. Boogey segmentation code ///////////////////// Optimizable
-    for (g = 0; g < img_info.ImageSize; g++)
-        img[g] = (img_mask[g] == img_mask[img_info.ImageSize/2]) ? img[g] : 0;
-    
     
     // 4. Produce Mask from Thresholded MRF
     printf("\nStarting Ours\n");
-    //int X = img_info.biWidth;
-    int midY = img_info.biWidth / 2 * byte_depth;
-    int midX = img_info.biHeight /2;
+    //int X = img_info.Width;
+    int midY = img_info.Width / 2 * byte_depth;
+    int midX = img_info.Height /2;
     int rowLength = byte_width;
     unsigned char lum [3];
     //int i,j,k;
@@ -206,7 +201,7 @@ int main(){
     //Visited = malloc(sizeof(struct Node));
     //original array to be analyzed
     printf("\nCheck malloc\n");
-    unsigned char *BFSArray = (unsigned char*) malloc(img_info.biImageSize);
+    unsigned char *BFSArray = (unsigned char*) malloc(img_info.ImageSize);
     printf("\nAfter malloc\n");
     //int BFSArray[]; //destination array to put results
     ToVisit->next = NULL;
@@ -226,7 +221,7 @@ int main(){
     int leftCheck = 0;
     int rightCheck = 0;
     printf("\nCheck 1\n");
-    for (j = 0; j < img_info.biImageSize; j++)
+    for (j = 0; j < img_info.ImageSize; j++)
     {
         BFSArray[j] = 0;
     }
@@ -251,7 +246,7 @@ int main(){
             {
                 leftCheck = 1;
             }
-            else if (rightX == current->row && rightY == current->column && rightY > img_info.biWidth *3 )
+            else if (rightX == current->row && rightY == current->column && rightY > img_info.Width *3 )
             {
                 rightCheck = 1;
             }
@@ -259,7 +254,7 @@ int main(){
             {
                 upCheck = 1;
             }
-            else if (downX == current->row && downY == current->column && downX > img_info.biHeight)
+            else if (downX == current->row && downY == current->column && downX > img_info.Height)
             {
                 downCheck = 1;
             }
@@ -318,11 +313,13 @@ int main(){
         }
         printf("\nCheck 7\n");
         //check rgb values
-        if (img_mask[ToVisit->row * rowLength + ToVisit->column] == lum[0] && img_mask[ToVisit->row * rowLength + ToVisit->column +1] == lum[1] && img_mask[ToVisit->row * rowLength + ToVisit->column +2] == lum[2])
+        if (img_mask[ToVisit->row * rowLength + ToVisit->column]    == lum[0] && 
+            img_mask[ToVisit->row * rowLength + ToVisit->column +1] == lum[1] && 
+            img_mask[ToVisit->row * rowLength + ToVisit->column +2] == lum[2])
         {
-            BFSArray[ToVisit->row * rowLength + ToVisit->column] = 1;
-            BFSArray[ToVisit->row * rowLength + ToVisit->column + 1] = 1;
-            BFSArray[ToVisit->row * rowLength + ToVisit->column + 1] = 1;
+            BFSArray[ToVisit->row * rowLength + ToVisit->column]    = 1;
+            BFSArray[ToVisit->row * rowLength + ToVisit->column +1] = 1;
+            BFSArray[ToVisit->row * rowLength + ToVisit->column +2] = 1;
         } //if all three values match, set corresponding index in final matrix to 1
         else
         {
@@ -344,6 +341,9 @@ int main(){
         
     }
 
+    // 5. Apply mask to image
+    for (g = 0; g < img_info.ImageSize; g++)
+        img[g] *= BFSArray[g];
     
     //  6. Save segmented image
     status = overwrite_bitmap(img_name, &img);
@@ -356,7 +356,7 @@ int main(){
     }
 
     //  7. Save image mask
-    status = overwrite_bitmap(img_mask_name, &img_mask);
+    status = overwrite_bitmap(img_mask_name, &BFSArray);
     if (status == -1) {
         printf("ERROR: 6. Could not open file\n");
         return 0;
