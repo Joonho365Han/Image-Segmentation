@@ -210,6 +210,7 @@ int main(){
     //original array to be analyzed
     printf("\nCheck malloc\n");
     unsigned char *BFSArray = (unsigned char*) malloc(img_info.ImageSize);
+    printf("\n %d \n", img_info.ImageSize);
     printf("\nAfter malloc\n");
     //int BFSArray[]; //destination array to put results
     ToVisit->next = NULL;
@@ -238,8 +239,13 @@ int main(){
     {
         BFSArray[j] = 0;
     }
+    long int count = 0;
     while (ToVisit != NULL)
     {
+        if (count > 4773)
+        {
+            printf("Checking");
+        }
         int downCheck = 0; //0 if not in visited list, 1 if in visited list
         int upCheck = 0;
         int leftCheck = 0;
@@ -255,31 +261,42 @@ int main(){
         struct Node * current = NULL;
         //current = malloc(sizeof(struct Node));
         current = Visited;
-        
+        if (count > 4773)
+        {
+            printf("Checking");
+        }
         while (current != NULL) //see if neighbor nodes have been visited
         {
-            if (leftX == current->row && leftY == current->column && leftY < 0 )
+            if ((leftX == current->row && leftY == current->column) || leftY < 0 )
             {
                 leftCheck = 1;
                 
             }
-            else if (rightX == current->row && rightY == current->column && rightY > img_info.Width *byte_depth )
+            else if ((rightX == current->row && rightY == current->column) || rightY > img_info.Width *byte_depth )
             {
                 rightCheck = 1;
             }
-            else if (upX == current->row && upY == current->column && upX < 0)
+            else if ((upX == current->row && upY == current->column) || upX < 0)
             {
                 upCheck = 1;
             }
-            else if (downX == current->row && downY == current->column && downX > img_info.Height)
+            else if ((downX == current->row && downY == current->column) || downX > img_info.Height)
             {
                 downCheck = 1;
             }
-            //printf("\nCheck before current\n");
+            
             current = current->next;
-            //printf("\nCheck after current\n");
-        } //printf("\nCheck 3\n");
+        }
+        if (count > 4773)
+        {
+            printf("Checking");
+        }
+        
         current = ToVisit;
+        if (count > 4773)
+        {
+            printf("Checking");
+        }
         //printf("\nafter to visit\n");
         while( current != NULL && current->next != NULL)
         {
@@ -288,7 +305,10 @@ int main(){
         }
         //printf("\nafter to while\n");
         //Visited = malloc(sizeof(struct Node));
-        
+        if (count > 4773)
+        {
+            printf("Checking");
+        }
         if (leftCheck == 0) //if not visited, add to to visit
         {
             struct Node * newOne = NULL;
@@ -314,8 +334,8 @@ int main(){
         {
             struct Node * newOne = NULL;
             newOne = malloc(sizeof(struct Node));
-            newOne->row = leftX;
-            newOne->column = leftY;
+            newOne->row = upX;
+            newOne->column = upY;
             newOne->next = NULL;
             current->next= newOne;
         }
@@ -324,10 +344,14 @@ int main(){
         {
             struct Node * newOne = NULL;
             newOne = malloc(sizeof(struct Node));
-            newOne->row = leftX;
-            newOne->column = leftY;
+            newOne->row = upX;
+            newOne->column = upY;
             newOne->next = NULL;
             current->next= newOne;
+        }
+        if (count > 4773)
+        {
+            printf("Checking");
         }
         //printf("\nCheck 7\n");
         //check rgb values
@@ -384,7 +408,12 @@ int main(){
             else
             {
                 current->next = newNode;
-            }        }
+            }
+        }
+        if (count > 4773)
+        {
+            printf("Checking");
+        }
         if (byte_depth == 2)
         {
             if (img_mask[ToVisit->row * rowLength + ToVisit->column]    == lum[0] &&
@@ -411,9 +440,29 @@ int main(){
             {
                 current->next = newNode;
             }
-        ToVisit = ToVisit->next;
+        }
+        if (count > 4773)
+        {
+            
+            printf("%d\n", count);
+        }
+        
+        count++;
+        struct Node * nextOne;
+        if (count > 4773)
+        {
+            printf("Checking");
+        }
+        nextOne = ToVisit->next;
+        free(ToVisit);
+        ToVisit = nextOne;
+        if (count > 4773)
+        {
+            printf("Checking");
+        }
         
     }
+    printf("\nEND\n");
     //for (j = 0; j < img_info.ImageSize; j++)
     //{
     //    printf("%u ", BFSArray[j]);
