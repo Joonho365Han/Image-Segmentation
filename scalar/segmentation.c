@@ -242,10 +242,7 @@ int main(){
     long int count = 0;
     while (ToVisit != NULL)
     {
-        if (count > 4773)
-        {
-            printf("\nChecking1");
-        }
+        
         int downCheck = 0; //0 if not in visited list, 1 if in visited list
         int upCheck = 0;
         int leftCheck = 0;
@@ -261,10 +258,6 @@ int main(){
         struct Node * current = NULL;
         //current = malloc(sizeof(struct Node));
         current = Visited;
-        if (count > 4773)
-        {
-            printf("\nChecking2");
-        }
         while (current != NULL) //see if neighbor nodes have been visited
         {
             if ((leftX == current->row && leftY == current->column) || leftY < 0 )
@@ -272,31 +265,25 @@ int main(){
                 leftCheck = 1;
                 
             }
-            else if ((rightX == current->row && rightY == current->column) || rightY > img_info.Width *byte_depth )
+            if ((rightX == current->row && rightY == current->column) || rightY > img_info.Width *byte_depth)
             {
                 rightCheck = 1;
             }
-            else if ((upX == current->row && upY == current->column) || upX < 0)
+            if ((upX == current->row && upY == current->column) || upX < 0)
             {
                 upCheck = 1;
             }
-            else if ((downX == current->row && downY == current->column) || downX > img_info.Height)
+            if ((downX == current->row && downY == current->column) || downX > img_info.Height)
             {
                 downCheck = 1;
             }
             
             current = current->next;
         }
-        if (count > 4773)
-        {
-            printf("\nChecking3");
-        }
+        
         
         current = ToVisit;
-        if (count > 4773)
-        {
-            printf("\nChecking4");
-        }
+        
         //printf("\nafter to visit\n");
         while( current != NULL && current->next != NULL)
         {
@@ -305,16 +292,9 @@ int main(){
         }
         //printf("\nafter to while\n");
         //Visited = malloc(sizeof(struct Node));
-        if (count > 4773)
+                if (leftCheck == 0) //if not visited, add to to visit
         {
-            printf("\nChecking5");
-        }
-        if (leftCheck == 0) //if not visited, add to to visit
-        {
-            if (count == 94193)
-            {
-                printf("\nme left\n");
-            }
+            
             struct Node * newOne = NULL;
             newOne = malloc(sizeof(struct Node));
             newOne->row = leftX;
@@ -389,14 +369,7 @@ int main(){
                 printf("\nme down6\n");
             }
         }
-        if (count > 4773)
-        {
-            printf("\nChecking6\n");
-        }
-        if (count > 4773)
-        {
-            printf("\nChecking6ada\n");
-        }
+        
         //printf("\nCheck 7\n");
         //check rgb values
         if (byte_depth == 3)
@@ -431,20 +404,56 @@ int main(){
         }
         if (byte_depth == 1)
         {
+            if (count > 94000)
+            {
+                printf("\nCheckingInside\n");
+            }
+
+            
             if (img_mask[ToVisit->row * rowLength + ToVisit->column]    == lum[0])
             {
+                if (count > 94000)
+                {
+                    printf("\nCheckingInsideInside\n");
+                    printf("\n Count = %d row %d colum %d\n", count, ToVisit->row, ToVisit->column);
+                }
+                
                 BFSArray[ToVisit->row * rowLength + ToVisit->column]    = 1;
+                if (count > 94000)
+                {
+                    printf("\nCheckingInsideAgain\n");
+                }
+            }
+            if (count > 94000)
+            {
+                printf("\nCheckingInside1\n");
             }
             current = Visited;
             while (current != NULL && current->next != NULL)
             {
             current = current->next;
             }
+            if (count > 94000)
+            {
+                printf("\nCheckingInside2\n");
+            }
             struct Node * newNode = NULL;
             newNode = malloc(sizeof(struct Node));
+            if (count > 94000)
+            {
+                printf("\nCheckingInside3\n");
+            }
             newNode->row = ToVisit->row;
+            if (count > 94000)
+            {
+                printf("\nCheckingInside4\n");
+            }
             newNode->column = ToVisit->column;
             newNode->next = NULL;
+            if (count > 94000)
+            {
+                printf("\nCheckingInside5\n");
+            }
             if (current == NULL)
             {
                 Visited = newNode;
@@ -453,11 +462,12 @@ int main(){
             {
                 current->next = newNode;
             }
+            if (count > 94000)
+            {
+                printf("\nCheckingInside6\n");
+            }
         }
-        if (count > 4773)
-        {
-            printf("\nChecking7");
-        }
+        
         if (byte_depth == 2)
         {
             if (img_mask[ToVisit->row * rowLength + ToVisit->column]    == lum[0] &&
@@ -493,17 +503,11 @@ int main(){
         
         count++;
         struct Node * nextOne;
-        if (count > 4773)
-        {
-            printf("\nChecking8");
-        }
+        
         nextOne = ToVisit->next;
         free(ToVisit);
         ToVisit = nextOne;
-        if (count > 4773)
-        {
-            printf("\nChecking9");
-        }
+        
         
     }
     printf("\nEND\n");
