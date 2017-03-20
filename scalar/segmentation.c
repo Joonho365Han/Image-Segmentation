@@ -244,7 +244,7 @@ int main(){
     {
         if (count > 4773)
         {
-            printf("Checking");
+            printf("\nChecking1");
         }
         int downCheck = 0; //0 if not in visited list, 1 if in visited list
         int upCheck = 0;
@@ -263,7 +263,7 @@ int main(){
         current = Visited;
         if (count > 4773)
         {
-            printf("Checking");
+            printf("\nChecking2");
         }
         while (current != NULL) //see if neighbor nodes have been visited
         {
@@ -289,13 +289,13 @@ int main(){
         }
         if (count > 4773)
         {
-            printf("Checking");
+            printf("\nChecking3");
         }
         
         current = ToVisit;
         if (count > 4773)
         {
-            printf("Checking");
+            printf("\nChecking4");
         }
         //printf("\nafter to visit\n");
         while( current != NULL && current->next != NULL)
@@ -307,10 +307,14 @@ int main(){
         //Visited = malloc(sizeof(struct Node));
         if (count > 4773)
         {
-            printf("Checking");
+            printf("\nChecking5");
         }
         if (leftCheck == 0) //if not visited, add to to visit
         {
+            if (count == 94193)
+            {
+                printf("\nme left\n");
+            }
             struct Node * newOne = NULL;
             newOne = malloc(sizeof(struct Node));
             newOne->row = leftX;
@@ -322,16 +326,24 @@ int main(){
         //printf("\nafter to first if\n");
         if (rightCheck == 0)
         {
+            if (count == 94193)
+            {
+                printf("\nme right\n");
+            }
             struct Node * newOne = NULL;
             newOne = malloc(sizeof(struct Node));
-            newOne->row = leftX;
-            newOne->column = leftY;
+            newOne->row = rightX;
+            newOne->column = rightY;
             newOne->next = NULL;
             current->next= newOne;
         }
         //printf("\nafter to secind if\n");
         if (upCheck == 0)
         {
+            if (count == 94193)
+            {
+                printf("\nme up\n");
+            }
             struct Node * newOne = NULL;
             newOne = malloc(sizeof(struct Node));
             newOne->row = upX;
@@ -342,16 +354,48 @@ int main(){
         //printf("\nafter third if\n");
         if (downCheck == 0)
         {
+            if (count == 94193)
+            {
+                printf("\nme down\n");
+            }
             struct Node * newOne = NULL;
+            if (count == 94193)
+            {
+                printf("\nme down1\n");
+            }
             newOne = malloc(sizeof(struct Node));
-            newOne->row = upX;
-            newOne->column = upY;
+            if (count == 94193)
+            {
+                printf("\nme down2\n");
+            }
+            newOne->row = downX;
+            if (count == 94193)
+            {
+                printf("\nme down3\n");
+            }
+            newOne->column = downY;
+            if (count == 94193)
+            {
+                printf("\nme down4\n");
+            }
             newOne->next = NULL;
+            if (count == 94193)
+            {
+                printf("\nme down5\n");
+            }
             current->next= newOne;
+            if (count == 94193)
+            {
+                printf("\nme down6\n");
+            }
         }
         if (count > 4773)
         {
-            printf("Checking");
+            printf("\nChecking6\n");
+        }
+        if (count > 4773)
+        {
+            printf("\nChecking6ada\n");
         }
         //printf("\nCheck 7\n");
         //check rgb values
@@ -412,7 +456,7 @@ int main(){
         }
         if (count > 4773)
         {
-            printf("Checking");
+            printf("\nChecking7");
         }
         if (byte_depth == 2)
         {
@@ -451,14 +495,14 @@ int main(){
         struct Node * nextOne;
         if (count > 4773)
         {
-            printf("Checking");
+            printf("\nChecking8");
         }
         nextOne = ToVisit->next;
         free(ToVisit);
         ToVisit = nextOne;
         if (count > 4773)
         {
-            printf("Checking");
+            printf("\nChecking9");
         }
         
     }
