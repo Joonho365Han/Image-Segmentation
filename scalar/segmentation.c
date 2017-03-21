@@ -5,15 +5,15 @@
 
 // Higher temperature smoothens the image more. It's like a pre-filter.
 // It will make more likely for pixels within object boundary to be grouped.
-#define TEMPERATURE 23
+#define TEMPERATURE 30
 
 // The more you iterate through CDF thresholding, the clearer the boundaries are.
 // Eventually it will converge and yield diminishing returns.
-#define ITERATIONS 3 // is Just enough
+#define ITERATIONS 3 // is usually Just enough
 
 // A threshold divides which pixels are assigned to which group.
 // A good threshold perfectly partitions the object from the background.
-#define THRESHOLD 0.85
+#define THRESHOLD 0.9
 
 // Higher order MRF makes it easier to tell if pixel is near object or not.
 // Image dimension is divided by PARTITION to determine the MRF order.
@@ -121,10 +121,7 @@ int main(){
     unsigned char *img_mask = (unsigned char*) malloc(img_info.ImageSize);
     int g;
     for (g = 0; g < img_info.ImageSize; g++)
-    {
-        img_copy[g] = img[g];
         img_mask[g] = img[g];
-    }
 
     // 3. Relate image areas by thresholding PDF of Markovian Gibbs Probability
     //    (Refer to: Image Prediction)
@@ -158,26 +155,32 @@ int main(){
             for (j = byte_offset; j < img_info.Width-byte_offset; j++)
                 for (k = 0; k < byte_depth; k++)
                 {
-                    // Generate Gibbs CDF using Markovian Neighbors
+                    // Initialize Gibbs CDF array
                     double gibbs_CDF[257];      // Gibbs PDF for this pixel (i,j)'s
                                                 // luminance to be 0,1...255 or lower 
                                                 // based on Markovian neighbor values.
                            gibbs_CDF[0] = 0;    // The first element is for making CDF 
                                                 // generation easier by having an index 0
                                                 // for lum -1, whose gibbs_PDF is 0.
-                    int lum;
+                    int lum, order = byte_offset*byte_offset;
                     for (lum = 0; lum <= 255; lum++) ///////////////// Optimizable
-                    {
-                        int l, m, Eq = 0, order = byte_offset*byte_offset; /////////// Optimizable
-                        for (l = -byte_offset; l <= byte_offset; l++)
-                            for (m = -byte_offset; m <= byte_offset; m++)
-                                if (l*l + m*m <= order)
-                                    Eq += (img_copy[(i+l)*byte_width + (j+m)*byte_depth + k] != (unsigned char) lum) ? 5 : 0;
-                        gibbs_CDF[lum+1] = gibbs_CDF[lum] + exp(-Eq/TEMPERATURE);
-                    }
+                        gibbs_CDF[lum+1] = order << 2;
+
+                    // Calculate Equipotential of each luminance using Markovian Neighbors
+                    int l, m;
+                    for (l = -byte_offset; l <= byte_offset; l++) /////////// Optimizable
+                        for (m = -byte_offset; m <= byte_offset; m++)
+                        {
+                            int lum = img_copy[(i+l)*byte_width + (j+m)*byte_depth + k] + 1;
+                            gibbs_CDF[lum] -= (l*l + m*m <= order) ? 5 : 0;
+                        }
+
+                    // Generate CDF
+                    for (lum = 0; lum <= 255; lum++) ///////////////// Optimizable
+                        gibbs_CDF[lum+1] = gibbs_CDF[lum] + exp(-gibbs_CDF[lum+1]/TEMPERATURE);
 
                     // Threshold CDF
-                    for (lum = 0; lum <= 255; lum++)
+                    for (lum = 0; lum <= 255; lum++) ///////////////// Optimizable
                         if (gibbs_CDF[lum+1]/gibbs_CDF[256] > THRESHOLD)
                         {
                             img_mask[i*byte_width+j*byte_depth+k] = (unsigned char) lum;
@@ -186,14 +189,22 @@ int main(){
                 }
         printf("Iteration %d done.\n", h+1);
     }
+
+    //  4. Save thresholded MRF image
+    status = overwrite_bitmap(img_mask_name, &img_mask);
+    if (status == -1) {
+        printf("ERROR: 6. Could not open file\n");
+        return 0;
+    } else if (status != 0) {
+        printf("ERROR: 7. Only wrote %d bytes\n", status);
+        return 0;
+    }
     
-    // 4. Produce Mask from Thresholded MRF
-    
-    int midY = img_info.Width / 2 * byte_depth;
-    int midX = img_info.Height /2;
+    // 5. Produce Mask from Thresholded MRF
+    int midY = img_info.Width  / 2 * byte_depth;
+    int midX = img_info.Height / 2;
     int rowLength = byte_width;
     unsigned char lum [byte_depth];
-    //int i,j,k;
     for (i = 0; i < byte_depth; i++)
     {
         lum[i] = img_mask[midX * rowLength + midY + i];
@@ -244,14 +255,15 @@ int main(){
         struct Node * current = NULL;
         current = Visited;
         
+        depthCheck = byte_depth;
         for (k=0;k < byte_depth; k++) //check to see if color value matches goal values
         {
             if (img_mask[ToVisit->row * rowLength + ToVisit->column] != lum[k])
             {
-                depthCheck = 1; //if it doesnt match, make check 1
+                depthCheck--; //if it doesnt match, make check 1
             }
         }
-        if (depthCheck == 0) //if the color matches, find the neighbors
+        if (depthCheck > 0) //if the color matches, find the neighbors
         {
             while (current != NULL) //see if neighbor nodes have been visited
             {
@@ -392,11 +404,11 @@ int main(){
         
         
     }
-    // 5. Apply mask to image
+    // 6. Apply mask to image
     for (g = 0; g < img_info.ImageSize; g++)
         img[g] *= BFSArray[g];
     
-    //  6. Save segmented image
+    //  7. Save segmented image
     status = overwrite_bitmap(img_name, &img);
     if (status == -1) {
         printf("ERROR: 4. Could not open file\n");
@@ -406,18 +418,8 @@ int main(){
         return 0;
     }
 
-    //  7. Save image mask
-    status = overwrite_bitmap(img_mask_name, &BFSArray);
-    if (status == -1) {
-        printf("ERROR: 6. Could not open file\n");
-        return 0;
-    } else if (status != 0) {
-        printf("ERROR: 7. Only wrote %d bytes\n", status);
-        return 0;
-    }
-
     free(img);
     free(img_mask);
-    free(BFSArray);
+    // free(BFSArray);
     return 0;
 }
