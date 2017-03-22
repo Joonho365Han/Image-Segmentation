@@ -5,7 +5,7 @@
 
 // Higher temperature smoothens the image more. It's like a pre-filter.
 // It will make more likely for pixels within object boundary to be grouped.
-#define TEMPERATURE 30
+#define TEMPERATURE 40
 
 // The more you iterate through CDF thresholding, the clearer the boundaries are.
 // Eventually it will converge and yield diminishing returns.
@@ -18,7 +18,7 @@
 // Higher order MRF makes it easier to tell if pixel is near object or not.
 // Image dimension is divided by PARTITION to determine the MRF order.
 // Higher PARTITION means lower MRF ORDER. (PARTITION = SIZE/ORDER)
-#define PARTITION 80
+#define PARTITION 60
 
 #pragma pack(push, 1)
 typedef struct

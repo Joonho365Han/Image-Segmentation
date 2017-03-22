@@ -1,6 +1,6 @@
 #!/bin/bash
 
-cp test4.bmp image.bmp
-cp test4.bmp image_mask.bmp
+cp test2.bmp image.bmp
+cp test2.bmp image_mask.bmp
 gcc segmentation.c -O3
 ./a.out
