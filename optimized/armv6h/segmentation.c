@@ -41,12 +41,12 @@ typedef struct
 } BMPINFOHEADER;
 #pragma pack(pop)
 
-typedef struct Node //struct used for linked lists
+struct Node //struct used for linked lists
 {
-    int x;
-    int y;
+    int row;
+    int column;
     struct Node *next;
-} Node;
+};
 
 int load_bitmap(char *filename, BMPINFOHEADER *bmpInfoHeader, unsigned char **img)
 {
@@ -101,7 +101,7 @@ int main(){
 
     //  1. Load bitmap
     char          *img_name = "image.bmp";
-    char          *img_mrf_name = "image_mrf.bmp";
+    char          *img_mask_name = "image_mrf.bmp";
     BMPINFOHEADER  img_info;
     unsigned char *img;
     int status = load_bitmap(img_name, &img_info, &img);
@@ -118,10 +118,10 @@ int main(){
 
     // 2. Copy the original image in a separate buffer and leave the original untouched.
     unsigned char *img_copy = (unsigned char*) malloc(img_info.ImageSize);
-    unsigned char *img_mrf  = (unsigned char*) malloc(img_info.ImageSize);
+    unsigned char *img_mask = (unsigned char*) malloc(img_info.ImageSize);
     int g;
     for (g = 0; g < img_info.ImageSize; g++)
-        img_mrf[g] = img[g];
+        img_mask[g] = img[g];
 
     // 3. Relate image areas by thresholding PDF of Markovian Gibbs Probability
     //    (Refer to: Image Prediction)
@@ -144,11 +144,11 @@ int main(){
     {
         //  In the beginning of every iteration:
         //      img_copy is the one that was iterated,
-        //      img_mrf is the result of iteration.
-        //  Data always flows from img_copy -> img_mrf.
-        //  Switch these two to modify the content of img_mrf again.
-        unsigned char *img_to_modify = img_mrf;
-        img_mrf  = img_copy;
+        //      img_mask is the result of iteration.
+        //  Data always flows from img_copy -> img_mask.
+        //  Switch these two to modify the content of img_mask again.
+        unsigned char *img_to_modify = img_mask;
+        img_mask = img_copy;
         img_copy = img_to_modify;
 
         for (i = byte_offset; i < img_info.Height-byte_offset; i++)
@@ -183,7 +183,7 @@ int main(){
                     for (lum = 0; lum <= 255; lum++) ///////////////// Optimizable
                         if (gibbs_CDF[lum+1]/gibbs_CDF[256] > THRESHOLD)
                         {
-                            img_mrf[i*byte_width+j*byte_depth+k] = (unsigned char) lum;
+                            img_mask[i*byte_width+j*byte_depth+k] = (unsigned char) lum;
                             lum = 256;
                         }
                 }
@@ -191,7 +191,7 @@ int main(){
     }
 
     //  4. Save thresholded MRF image
-    status = overwrite_bitmap(img_mrf_name, &img_mrf);
+    status = overwrite_bitmap(img_mask_name, &img_mask);
     if (status == -1) {
         printf("ERROR: 6. Could not open file\n");
         return 0;
@@ -203,13 +203,13 @@ int main(){
     // 5. Produce Mask from Thresholded MRF using BFS
     int midX = img_info.Height / 2;
     int midY = img_info.Width  / 2;
-    unsigned char *center   = &img_mrf[midX * byte_width + midY * byte_depth];
-    unsigned char *img_mask = (unsigned char*) calloc(img_info.ImageSize, 1);
-    Node *visiting = (Node*) malloc(sizeof(Node));
-          visiting->x    = midX;
-          visiting->y    = midY;
+    unsigned char *center   = &img_mask[midX * byte_width + midY * byte_depth];
+    unsigned char *BFSArray = (unsigned char*) calloc(img_info.ImageSize, 1);
+    struct Node *visiting = (struct Node*) malloc(sizeof(struct Node));
+          visiting->row    = midX;
+          visiting->column    = midY;
           visiting->next = NULL;
-    Node *last_in_queue  = visiting;
+    struct Node *last_in_queue  = visiting;
     while (visiting != NULL) 
     {
         //  Check all 4 vertical and horizontal neighbors.
@@ -217,41 +217,41 @@ int main(){
         for (i=0; i<4; i++, past_col=col, col=row*-1, row=past_col)
         {
             //  Index of the neighbor
-            int x = visiting->x+row;
-            int y = visiting->y+col;
+            int x = visiting->row+row;
+            int y = visiting->column+col;
 
-            // 1. The visiting node is always "valid (has 1 same RGB as center)"
+            // 1. The visiting struct Node is always "valid (has 1 same RGB as center)"
             // 2. If neighbor is not valid, move on. If "valid" and unvisited, mark valid and add to queue
             // 3. On mask, 0 is unvisited, 1 is valid
 
             if ((x|y) < 0 || x >= img_info.Height || y >= img_info.Width) //  Boundary check
                 continue;
-            if (img_mask[x*byte_width + y*byte_depth])
+            if (BFSArray[x*byte_width + y*byte_depth])
                 continue;
             for (j = 0; j < byte_depth; j++)
-                j = (img_mrf[x*byte_width + y*byte_depth + j] == center[j]) ? byte_depth+1 : j;
+                j = (img_mask[x*byte_width + y*byte_depth + j] == center[j]) ? byte_depth+1 : j;
             if (j < byte_depth+1)
                 continue;
 
             //  The pixel is valid. Mark as valid and add to queue.
             for (j = 0; j < byte_depth; j++)
-                img_mask[x*byte_width + y*byte_depth + j] = 1;
+                BFSArray[x*byte_width + y*byte_depth + j] = 1;
 
-            last_in_queue->next = (Node*) malloc(sizeof(Node));
+            last_in_queue->next = (struct Node*) malloc(sizeof(struct Node));
             last_in_queue = last_in_queue->next;
-            last_in_queue->x    = x;
-            last_in_queue->y    = y;
+            last_in_queue->row    = x;
+            last_in_queue->column    = y;
             last_in_queue->next = NULL;
         }
        
-        Node *to_visit = visiting->next;
+        struct Node *to_visit = visiting->next;
         free(visiting);
-        visiting = to_visit; //free node and move on to the next on the list
+        visiting = to_visit; //free struct Node and move on to the next on the list
     }
 
     // 6. Apply mask to image
     for (g = 0; g < img_info.ImageSize; g++)
-        img[g] *= img_mask[g];
+        img[g] *= BFSArray[g];
     
     //  7. Save segmented image
     status = overwrite_bitmap(img_name, &img);
@@ -264,8 +264,8 @@ int main(){
     }
 
     free(img);
-    free(img_mrf);
-    free(img_copy);
     free(img_mask);
+    free(img_copy);
+    free(BFSArray);
     return 0;
 }
