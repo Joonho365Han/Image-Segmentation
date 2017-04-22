@@ -1,7 +1,8 @@
 #include <stdio.h>
 #include <stdlib.h>
-#include <math.h>
 #include <unistd.h>
+#include <time.h>
+#include <math.h>
 
 // Higher temperature smoothens the image more. It's like a pre-filter.
 // It will make more likely for pixels within object boundary to be grouped.
@@ -47,6 +48,19 @@ struct Node //struct used for linked lists
     int column;
     struct Node *next;
 };
+
+struct timespec diff(struct timespec start, struct timespec end)
+{
+  struct timespec temp;
+  if ((end.tv_nsec-start.tv_nsec)<0) {
+    temp.tv_sec = end.tv_sec-start.tv_sec-1;
+    temp.tv_nsec = 1000000000+end.tv_nsec-start.tv_nsec;
+  } else {
+    temp.tv_sec = end.tv_sec-start.tv_sec;
+    temp.tv_nsec = end.tv_nsec-start.tv_nsec;
+  }
+  return temp;
+}
 
 int load_bitmap(char *filename, BMPINFOHEADER *bmpInfoHeader, unsigned char **img)
 {
@@ -99,9 +113,13 @@ int overwrite_bitmap(char *filename, unsigned char **img)
 
 int main(){
 
+    //  0. Initialize timestamp calculator
+    struct timespec time1, time2, result;
+    clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &time1);
+
     //  1. Load bitmap
     char          *img_name = "image.bmp";
-    char          *img_mask_name = "image_mrf.bmp";
+    char          *img_mask_name = "image_mask.bmp";
     BMPINFOHEADER  img_info;
     unsigned char *img;
     int status = load_bitmap(img_name, &img_info, &img);
@@ -116,14 +134,14 @@ int main(){
         return 0;
     }
 
-    // 2. Copy the original image in a separate buffer and leave the original untouched.
+    //  2. Copy the original image in a separate buffer and leave the original untouched.
     unsigned char *img_copy = (unsigned char*) malloc(img_info.ImageSize);
     unsigned char *img_mask = (unsigned char*) malloc(img_info.ImageSize);
     int g;
     for (g = 0; g < img_info.ImageSize; g++)
         img_mask[g] = img[g];
 
-    // 3. Relate image areas by thresholding PDF of Markovian Gibbs Probability
+    //  3. Relate image areas by thresholding PDF of Markovian Gibbs Probability
     //    (Refer to: Image Prediction)
     /*
         These are some variable descriptions. 
@@ -168,7 +186,7 @@ int main(){
 
                     // Calculate Equipotential of each luminance using Markovian Neighbors
                     int l, m;
-                    for (l = -byte_offset; l <= byte_offset; l++) /////////// Optimizable
+                    for (l = -byte_offset; l <= byte_offset; l++)
                         for (m = -byte_offset; m <= byte_offset; m++)
                         {
                             int lum = img_copy[(i+l)*byte_width + (j+m)*byte_depth + k] + 1;
@@ -176,11 +194,11 @@ int main(){
                         }
 
                     // Generate CDF
-                    for (lum = 0; lum <= 255; lum++) ///////////////// Optimizable
+                    for (lum = 0; lum <= 255; lum++)
                         gibbs_CDF[lum+1] = gibbs_CDF[lum] + exp(-gibbs_CDF[lum+1]/TEMPERATURE);
 
                     // Threshold CDF
-                    for (lum = 0; lum <= 255; lum++) ///////////////// Optimizable
+                    for (lum = 0; lum <= 255; lum++)
                         if (gibbs_CDF[lum+1]/gibbs_CDF[256] > THRESHOLD)
                         {
                             img_mask[i*byte_width+j*byte_depth+k] = (unsigned char) lum;
@@ -200,15 +218,15 @@ int main(){
         return 0;
     }
     
-    // 5. Produce Mask from Thresholded MRF using BFS
+    //  5. Produce Mask from Thresholded MRF using BFS
     int midX = img_info.Height / 2;
     int midY = img_info.Width  / 2;
     unsigned char *center   = &img_mask[midX * byte_width + midY * byte_depth];
     unsigned char *BFSArray = (unsigned char*) calloc(img_info.ImageSize, 1);
-    struct Node *visiting = (struct Node*) malloc(sizeof(struct Node));
-          visiting->row    = midX;
-          visiting->column    = midY;
-          visiting->next = NULL;
+    struct Node   *visiting = (struct Node*) malloc(sizeof(struct Node));
+          visiting->row     = midX;
+          visiting->column  = midY;
+          visiting->next    = NULL;
     struct Node *last_in_queue  = visiting;
     while (visiting != NULL) 
     {
@@ -220,13 +238,13 @@ int main(){
             int x = visiting->row+row;
             int y = visiting->column+col;
 
+            //  Tests
             // 1. The visiting struct Node is always "valid (has 1 same RGB as center)"
             // 2. If neighbor is not valid, move on. If "valid" and unvisited, mark valid and add to queue
             // 3. On mask, 0 is unvisited, 1 is valid
-
             if ((x|y) < 0 || x >= img_info.Height || y >= img_info.Width) //  Boundary check
                 continue;
-            if (BFSArray[x*byte_width + y*byte_depth])
+            if (BFSArray[x*byte_width + y*byte_depth]) //  If already marked valid, don't check again
                 continue;
             for (j = 0; j < byte_depth; j++)
                 j = (img_mask[x*byte_width + y*byte_depth + j] == center[j]) ? byte_depth+1 : j;
@@ -238,10 +256,11 @@ int main(){
                 BFSArray[x*byte_width + y*byte_depth + j] = 1;
 
             last_in_queue->next = (struct Node*) malloc(sizeof(struct Node));
-            last_in_queue = last_in_queue->next;
+            last_in_queue       = last_in_queue->next;
+
             last_in_queue->row    = x;
-            last_in_queue->column    = y;
-            last_in_queue->next = NULL;
+            last_in_queue->column = y;
+            last_in_queue->next   = NULL;
         }
        
         struct Node *to_visit = visiting->next;
@@ -249,11 +268,17 @@ int main(){
         visiting = to_visit; //free struct Node and move on to the next on the list
     }
 
-    // 6. Apply mask to image
+    //  6. Apply mask to image
     for (g = 0; g < img_info.ImageSize; g++)
         img[g] *= BFSArray[g];
+
+    //  7. Calculate code duration
+    clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &time2);
+    result = diff(time1, time2);
+    long int code_duration = 1000000000 * result.tv_sec + result.tv_nsec;
+    printf("\n::: Duration: %ldns\n\n", code_duration);
     
-    //  7. Save segmented image
+    //  8. Save segmented image
     status = overwrite_bitmap(img_name, &img);
     if (status == -1) {
         printf("ERROR: 4. Could not open file\n");
