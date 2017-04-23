@@ -117,6 +117,9 @@ int main(){
     struct timespec time1, time2, result;
     clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &time1);
 
+    unsigned int a=10, b=16, c;
+    c = __qadd8(a,b);
+
     //  1. Load bitmap
     char          *img_name = "image.bmp";
     char          *img_mask_name = "image_mask.bmp";
@@ -155,8 +158,7 @@ int main(){
     int byte_depth  = img_info.bitPerPix / 8;
     int byte_padd   = (4 - img_info.Width * byte_depth & 0x3) & 0x3;
     int byte_width  = img_info.Width * byte_depth + byte_padd;
-    int byte_offset = (img_info.Width < img_info.Height) ? 
-                        img_info.Width/PARTITION : img_info.Height/PARTITION;
+    int byte_offset = (img_info.Width < img_info.Height) ? img_info.Width/PARTITION : img_info.Height/PARTITION;
     int h, i, j, k;
     for (h = 0; h < ITERATIONS; h++)
     {
@@ -181,23 +183,22 @@ int main(){
                                                 // generation easier by having an index 0
                                                 // for lum -1, whose gibbs_PDF is 0.
                     int lum, order = byte_offset*byte_offset;
-                    for (lum = 0; lum <= 255; lum++) ///////////////// Optimizable
+                    for (lum = 0; lum <= 255; lum++) ///// Vectorizable
                         gibbs_CDF[lum+1] = order << 2;
 
                     // Calculate Equipotential of each luminance using Markovian Neighbors
                     int l, m;
-                    for (l = -byte_offset; l <= byte_offset; l++)
+                    for (l = -byte_offset; l <= byte_offset; l++) ///// Vectorizable
                         for (m = -byte_offset; m <= byte_offset; m++)
                         {
-                            int lum = img_copy[(i+l)*byte_width + (j+m)*byte_depth + k] + 1;
-                            gibbs_CDF[lum] -= (l*l + m*m <= order) ? 5 : 0;
+                            gibbs_CDF[img_copy[(i+l)*byte_width+(j+m)*byte_depth+k]+1] -= (l*l + m*m <= order) ? 5 : 0;
                         }
 
-                    // Generate CDF
+                    // Generate CDF (Must be scalar)
                     for (lum = 0; lum <= 255; lum++)
                         gibbs_CDF[lum+1] = gibbs_CDF[lum] + exp(-gibbs_CDF[lum+1]/TEMPERATURE);
 
-                    // Threshold CDF
+                    // Threshold CDF ///// Vectorizable
                     for (lum = 0; lum <= 255; lum++)
                         if (gibbs_CDF[lum+1]/gibbs_CDF[256] > THRESHOLD)
                         {
@@ -224,15 +225,15 @@ int main(){
     unsigned char *center   = &img_mask[midX * byte_width + midY * byte_depth];
     unsigned char *BFSArray = (unsigned char*) calloc(img_info.ImageSize, 1);
     struct Node   *visiting = (struct Node*) malloc(sizeof(struct Node));
-          visiting->row     = midX;
-          visiting->column  = midY;
-          visiting->next    = NULL;
-    struct Node *last_in_queue  = visiting;
+                   visiting->row    = midX;
+                   visiting->column = midY;
+                   visiting->next   = NULL;
+    struct Node   *last_in_queue = visiting;
     while (visiting != NULL) 
     {
         //  Check all 4 vertical and horizontal neighbors.
         int past_col=-1, col=-1, row=0;
-        for (i=0; i<4; i++, past_col=col, col=row*-1, row=past_col)
+        for (i=0; i<4; i++, past_col=col, col=row*-1, row=past_col) ///// vectorizable
         {
             //  Index of the neighbor
             int x = visiting->row+row;
@@ -265,7 +266,7 @@ int main(){
        
         struct Node *to_visit = visiting->next;
         free(visiting);
-        visiting = to_visit; //free struct Node and move on to the next on the list
+        visiting = to_visit; // free struct Node and move on to the next on the list
     }
 
     //  6. Apply mask to image
