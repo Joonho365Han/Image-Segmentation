@@ -1,8 +1,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
-#include <time.h>
 #include <math.h>
+//#include "QPULib.h"
 
 // Higher temperature smoothens the image more. It's like a pre-filter.
 // It will make more likely for pixels within object boundary to be grouped.
@@ -10,7 +10,7 @@
 
 // The more you iterate through CDF thresholding, the clearer the boundaries are.
 // Eventually it will converge and yield diminishing returns.
-#define ITERATIONS 3 // is usually Just enough
+#define ITERATIONS 1 // is usually Just enough
 
 // A threshold divides which pixels are assigned to which group.
 // A good threshold perfectly partitions the object from the background.
@@ -19,7 +19,7 @@
 // Higher order MRF makes it easier to tell if pixel is near object or not.
 // Image dimension is divided by PARTITION to determine the MRF order.
 // Higher PARTITION means lower MRF ORDER. (PARTITION = SIZE/ORDER)
-#define PARTITION 60
+#define PARTITION 120
 
 #pragma pack(push, 1)
 typedef struct
@@ -48,19 +48,6 @@ struct Node //struct used for linked lists
     int column;
     struct Node *next;
 };
-
-struct timespec diff(struct timespec start, struct timespec end)
-{
-  struct timespec temp;
-  if ((end.tv_nsec-start.tv_nsec)<0) {
-    temp.tv_sec = end.tv_sec-start.tv_sec-1;
-    temp.tv_nsec = 1000000000+end.tv_nsec-start.tv_nsec;
-  } else {
-    temp.tv_sec = end.tv_sec-start.tv_sec;
-    temp.tv_nsec = end.tv_nsec-start.tv_nsec;
-  }
-  return temp;
-}
 
 int load_bitmap(char *filename, BMPINFOHEADER *bmpInfoHeader, unsigned char **img)
 {
@@ -110,6 +97,18 @@ int overwrite_bitmap(char *filename, unsigned char **img)
 
     return 0;
 }
+/*
+void is_neighbor(Ptr<Int> hl, Ptr<Int> hm, Ptr<Int> hord, Ptr<Int> hr)
+{
+	Int dl   = *hl;
+	Int dm   = *hm;
+	Int dord = *hord;
+	Int dr;
+	Where (dl*dl + dm*dm <= dord)
+		dr = dord;
+	End
+	*hr = dr;
+}*/
 
 int main(){
 
@@ -152,7 +151,14 @@ int main(){
     int byte_padd   = (4 - img_info.Width * byte_depth & 0x3) & 0x3;
     int byte_width  = img_info.Width * byte_depth + byte_padd;
     int byte_offset = (img_info.Width < img_info.Height) ? img_info.Width/PARTITION : img_info.Height/PARTITION;
-    int h, i, j, k;
+    int order = byte_offset*byte_offset;
+    int  N    = 2*byte_offset + 1;
+    int h, i, j, k, l, m;
+    char is_neighbor[N*N];
+    
+                    for (l = -byte_offset; l <= byte_offset; l+=1)
+                        for (m = -byte_offset; m <= byte_offset; m+=1)
+                            is_neighbor[(l+byte_offset)*N+m+byte_offset] = (l*l + m*m <= order);
     for (h = 0; h < ITERATIONS; h++)
     {
         //  In the beginning of every iteration:
@@ -175,16 +181,29 @@ int main(){
                            gibbs_CDF[0] = 0;    // The first element is for making CDF 
                                                 // generation easier by having an index 0
                                                 // for lum -1, whose gibbs_PDF is 0.
-                    int lum, order = byte_offset*byte_offset;
+                    int lum;
                     for (lum = 0; lum <= 255; lum++) ///// Vectorizable
                         gibbs_CDF[lum+1] = order << 2;
 
                     // Calculate Equipotential of each luminance using Markovian Neighbors
-                    int l, m;
-                    for (l = -byte_offset; l <= byte_offset; l++) ///// Vectorizable
-                        for (m = -byte_offset; m <= byte_offset; m++)
-                            gibbs_CDF[img_copy[(i+l)*byte_width+(j+m)*byte_depth+k]+1] -= (l*l + m*m <= order) ? 5 : 0;
-
+                    /*
+                    auto k_eq = compile(is_neighbor);
+                    SharedArray<int> hl(N), hm(N), hord(N), hr(N);
+                    int l, m, n;*/
+                    for (l = -byte_offset; l <= byte_offset; l+=1)
+						/*for (n = 0; n < N; n++)
+						{
+							hl[n]   = l;
+							hm[n]   = n - byte_offset;
+							hord[n] = order;
+							hr[n]   = 0;
+						}
+						k_eq.setNumQPUs(2);
+						k_eq(&hl, &hm, &hord, &hr);
+							*/
+                        for (m = -byte_offset; m <= byte_offset; m+=1)
+                            gibbs_CDF[img_copy[(i+l)*byte_width+(j+m)*byte_depth+k]+1] -= (is_neighbor[(l+byte_offset)*N+m+byte_offset]) ? 5 : 0;
+                            
                     // Generate CDF (Must be scalar)
                     for (lum = 0; lum <= 255; lum++)
                         gibbs_CDF[lum+1] = gibbs_CDF[lum] + exp(-gibbs_CDF[lum+1]/TEMPERATURE);
@@ -262,7 +281,7 @@ int main(){
 
     //  6. Apply mask to image
     for (g = 0; g < img_info.ImageSize; g++)
-        img[g] *= BFSArray[g];
+        img[g] *= (int) BFSArray[g];
     
     //  7. Save segmented image
     status = overwrite_bitmap(img_name, &img);

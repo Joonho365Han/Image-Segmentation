@@ -2,5 +2,5 @@
 
 cp test2.bmp image.bmp
 cp test2.bmp image_mask.bmp
-make QPU=12 segmentation
-time sudo ./segmentation
+gcc segmentation.cpp -O1 -lm
+time ./a.out
