@@ -1,9 +1,12 @@
+# Filename to compile
+FILE=segmentation
+
 # Root directory of QPULib repository
 ROOT = libqpu/Lib
 
 # Compiler and default flags
 CXX = g++
-CXX_FLAGS = -Wconversion -std=c++0x -I $(ROOT)
+CXX_FLAGS = -Wconversion -std=c++0x -I $(ROOT) -lm -O1
 
 # Object directory
 OBJ_DIR = libqpu/obj
@@ -64,9 +67,11 @@ clean:
 
 LIB = $(patsubst %,$(OBJ_DIR)/%,$(OBJ))
 
-GCD: GCD.o $(LIB)
+$(FILE): $(FILE).o $(LIB)
+	-rm $@
 	@echo Linking...
 	@$(CXX) $^ -o $@ $(CXX_FLAGS)
+	-rm $@.o
 
 # Intermediate targets
 
