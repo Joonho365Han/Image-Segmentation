@@ -3,4 +3,4 @@
 cp test2.bmp image.bmp
 cp test2.bmp image_mask.bmp
 gcc segmentation.cpp -O1 -lm
-./a.out
+time ./a.out

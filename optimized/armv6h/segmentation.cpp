@@ -113,13 +113,6 @@ int overwrite_bitmap(char *filename, unsigned char **img)
 
 int main(){
 
-    //  0. Initialize timestamp calculator
-    struct timespec time1, time2, result;
-    clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &time1);
-
-    unsigned int a=10, b=16, c;
-    c = __qadd8(a,b);
-
     //  1. Load bitmap
     char          *img_name = "image.bmp";
     char          *img_mask_name = "image_mask.bmp";
@@ -190,9 +183,7 @@ int main(){
                     int l, m;
                     for (l = -byte_offset; l <= byte_offset; l++) ///// Vectorizable
                         for (m = -byte_offset; m <= byte_offset; m++)
-                        {
                             gibbs_CDF[img_copy[(i+l)*byte_width+(j+m)*byte_depth+k]+1] -= (l*l + m*m <= order) ? 5 : 0;
-                        }
 
                     // Generate CDF (Must be scalar)
                     for (lum = 0; lum <= 255; lum++)
@@ -272,14 +263,8 @@ int main(){
     //  6. Apply mask to image
     for (g = 0; g < img_info.ImageSize; g++)
         img[g] *= BFSArray[g];
-
-    //  7. Calculate code duration
-    clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &time2);
-    result = diff(time1, time2);
-    long int code_duration = 1000000000 * result.tv_sec + result.tv_nsec;
-    printf("\n::: Duration: %ldns\n\n", code_duration);
     
-    //  8. Save segmented image
+    //  7. Save segmented image
     status = overwrite_bitmap(img_name, &img);
     if (status == -1) {
         printf("ERROR: 4. Could not open file\n");
