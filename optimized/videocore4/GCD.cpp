@@ -29,6 +29,9 @@ int main()
     b[i] = 100 + (rand() % 100);
   }
 
+  // Set the number of QPUs to use
+  k.setNumQPUs(1);
+
   // Invoke the kernel and display the result
   k(&a, &b, &r);
   for (int i = 0; i < 16; i++)

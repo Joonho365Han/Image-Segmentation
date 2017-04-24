@@ -1,6 +1,6 @@
 #!/bin/bash
 
-cp test2.bmp image.bmp
-cp test2.bmp image_mask.bmp
-make QPU=12 segmentation
+cp test7.bmp image.bmp
+cp test7.bmp image_mask.bmp
+make QPU=1 segmentation
 time sudo ./segmentation

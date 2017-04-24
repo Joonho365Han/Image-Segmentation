@@ -14,7 +14,7 @@
 
 // A threshold divides which pixels are assigned to which group.
 // A good threshold perfectly partitions the object from the background.
-#define THRESHOLD 0.9
+#define THRESHOLD 0.8
 
 // Higher order MRF makes it easier to tell if pixel is near object or not.
 // Image dimension is divided by PARTITION to determine the MRF order.

@@ -17,7 +17,7 @@ ifeq ($(DEBUG), 1)
 endif
 
 # QPU or emulation mode
-ifneq ($(QPU), 1)
+ifeq ($(QPU), 1)
   CXX_FLAGS += -DQPU_MODE
 else
   CXX_FLAGS += -DEMULATION_MODE
