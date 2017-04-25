@@ -10,16 +10,16 @@
 
 // The more you iterate through CDF thresholding, the clearer the boundaries are.
 // Eventually it will converge and yield diminishing returns.
-#define ITERATIONS 1 // is usually Just enough
+#define ITERATIONS 3 // is usually Just enough
 
 // A threshold divides which pixels are assigned to which group.
 // A good threshold perfectly partitions the object from the background.
-#define THRESHOLD 0.9
+#define THRESHOLD 0.8
 
 // Higher order MRF makes it easier to tell if pixel is near object or not.
 // Image dimension is divided by PARTITION to determine the MRF order.
 // Higher PARTITION means lower MRF ORDER. (PARTITION = SIZE/ORDER)
-#define PARTITION 120
+#define PARTITION 60
 
 #pragma pack(push, 1)
 typedef struct
@@ -150,15 +150,15 @@ int main(){
     int byte_depth  = img_info.bitPerPix / 8;
     int byte_padd   = (4 - img_info.Width * byte_depth & 0x3) & 0x3;
     int byte_width  = img_info.Width * byte_depth + byte_padd;
-    int byte_offset = (img_info.Width < img_info.Height) ? img_info.Width/PARTITION : img_info.Height/PARTITION;
-    int order = byte_offset*byte_offset;
-    int  N    = 2*byte_offset + 1;
+    int byte_offset = (img_info.Width < img_info.Height) ? 
+			img_info.Width/PARTITION : img_info.Height/PARTITION;
+    int R2 = byte_offset*byte_offset;
+    int D  = 2*byte_offset + 1;
+    char is_neighbor[D*D];
     int h, i, j, k, l, m;
-    char is_neighbor[N*N];
-    
-                    for (l = -byte_offset; l <= byte_offset; l+=1)
-                        for (m = -byte_offset; m <= byte_offset; m+=1)
-                            is_neighbor[(l+byte_offset)*N+m+byte_offset] = (l*l + m*m <= order);
+    for (l = -byte_offset; l <= byte_offset; l++)
+		for (m = -byte_offset; m <= byte_offset; m++)
+			is_neighbor[(l+byte_offset)*D+m+byte_offset] = (l*l + m*m <= R2);
     for (h = 0; h < ITERATIONS; h++)
     {
         //  In the beginning of every iteration:
@@ -182,15 +182,14 @@ int main(){
                                                 // generation easier by having an index 0
                                                 // for lum -1, whose gibbs_PDF is 0.
                     int lum;
-                    for (lum = 0; lum <= 255; lum++) ///// Vectorizable
-                        gibbs_CDF[lum+1] = order << 2;
+                    for (lum = 0; lum <= 255; lum++)
+                        gibbs_CDF[lum+1] = R2 << 2;
 
                     // Calculate Equipotential of each luminance using Markovian Neighbors
                     /*
                     auto k_eq = compile(is_neighbor);
                     SharedArray<int> hl(N), hm(N), hord(N), hr(N);
                     int l, m, n;*/
-                    for (l = -byte_offset; l <= byte_offset; l+=1)
 						/*for (n = 0; n < N; n++)
 						{
 							hl[n]   = l;
@@ -201,8 +200,9 @@ int main(){
 						k_eq.setNumQPUs(2);
 						k_eq(&hl, &hm, &hord, &hr);
 							*/
+                    for (l = -byte_offset; l <= byte_offset; l+=1)
                         for (m = -byte_offset; m <= byte_offset; m+=1)
-                            gibbs_CDF[img_copy[(i+l)*byte_width+(j+m)*byte_depth+k]+1] -= (is_neighbor[(l+byte_offset)*N+m+byte_offset]) ? 5 : 0;
+                            gibbs_CDF[img_copy[(i+l)*byte_width+(j+m)*byte_depth+k]+1] -= (is_neighbor[(l+byte_offset)*D+m+byte_offset]) ? 5 : 0;
                             
                     // Generate CDF (Must be scalar)
                     for (lum = 0; lum <= 255; lum++)

@@ -10,16 +10,16 @@
 
 // The more you iterate through CDF thresholding, the clearer the boundaries are.
 // Eventually it will converge and yield diminishing returns.
-#define ITERATIONS 1 // is usually Just enough
+#define ITERATIONS 3 // is usually Just enough
 
 // A threshold divides which pixels are assigned to which group.
 // A good threshold perfectly partitions the object from the background.
-#define THRESHOLD 0.9
+#define THRESHOLD 0.8
 
 // Higher order MRF makes it easier to tell if pixel is near object or not.
 // Image dimension is divided by PARTITION to determine the MRF order.
 // Higher PARTITION means lower MRF ORDER. (PARTITION = SIZE/ORDER)
-#define PARTITION 120
+#define PARTITION 60
 
 #pragma pack(push, 1)
 typedef struct
