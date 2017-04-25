@@ -24,78 +24,78 @@
 #pragma pack(push, 1)
 typedef struct
 {
-    short int confirm_bmp;
-    int bfSize;
-    short int bfReserved1;
-    short int bfReserved2;
-    int bfOffBits;
+	short int confirm_bmp;
+	int bfSize;
+	short int bfReserved1;
+	short int bfReserved2;
+	int bfOffBits;
 } BMPFILEHEADER;
 typedef struct
 {
-    int Size;
-    int Width;
-    int Height;
-    short int Planes;
-    short int bitPerPix;
-    int Compression;
-    int ImageSize;
+	int Size;
+	int Width;
+	int Height;
+	short int Planes;
+	short int bitPerPix;
+	int Compression;
+	int ImageSize;
 } BMPINFOHEADER;
 #pragma pack(pop)
 
 struct Node //struct used for linked lists
 {
-    int row;
-    int column;
-    struct Node *next;
+	int row;
+	int column;
+	struct Node *next;
 };
 
 int load_bitmap(char *filename, BMPINFOHEADER *bmpInfoHeader, unsigned char **img)
 {
-    //  1. Open filename in read binary mode
-    FILE *filePtr = fopen(filename,"rb");
-    if (filePtr == NULL) return -1;
+	//  1. Open filename in read binary mode
+	FILE *filePtr = fopen(filename,"rb");
+	if (filePtr == NULL) return -1;
 
-    //  2. Read the headers
-    BMPFILEHEADER bmpFileHeader;
-    fread(&bmpFileHeader, sizeof(BMPFILEHEADER), 1, filePtr);
-    fread(bmpInfoHeader, sizeof(BMPINFOHEADER), 1, filePtr);
+	//  2. Read the headers
+	BMPFILEHEADER bmpFileHeader;
+	fread(&bmpFileHeader, sizeof(BMPFILEHEADER), 1, filePtr);
+	fread(bmpInfoHeader, sizeof(BMPINFOHEADER), 1, filePtr);
 
-    //  3. malloc for bitmap
-    int imgSize = bmpInfoHeader->ImageSize;
-    *img = (unsigned char*) malloc(imgSize*sizeof(unsigned char));
-    if (*img == NULL) return -2;
+	//  3. malloc for bitmap
+	int imgSize = bmpInfoHeader->ImageSize;
+	*img = (unsigned char*) malloc(imgSize*sizeof(unsigned char));
+	if (*img == NULL) return -2;
 
-    //  4. Read the bitmap
-    fseek(filePtr, bmpFileHeader.bfOffBits, SEEK_SET);
-    int count = fread(*img, sizeof(unsigned char), imgSize, filePtr);
-    if (count == 0) printf("ERROR: Could not read anything\n");
-    if (count != imgSize) return count;
-    fclose(filePtr);
+	//  4. Read the bitmap
+	fseek(filePtr, bmpFileHeader.bfOffBits, SEEK_SET);
+	int count = fread(*img, sizeof(unsigned char), imgSize, filePtr);
+	if (count == 0) printf("ERROR: Could not read anything\n");
+	if (count != imgSize) return count;
+	fclose(filePtr);
 
-    return 0;
+	return 0;
 }
 
 int overwrite_bitmap(char *filename, unsigned char **img)
 {
-    //  1. Open filename in "R/W binary at beginning" mode
-    FILE *filePtr = fopen(filename, "rb+");
-    if (filePtr == NULL) return -1;
+	//  1. Open filename in "R/W binary at beginning" mode
+	FILE *filePtr = fopen(filename, "rb+");
+	if (filePtr == NULL) return -1;
 
-    //  2. Read file header to find where and how much to write image
-    BMPFILEHEADER bmpFileHeader;
-    BMPINFOHEADER bmpInfoHeader;
-    fread(&bmpFileHeader, sizeof(BMPFILEHEADER), 1, filePtr);
-    fread(&bmpInfoHeader, sizeof(BMPINFOHEADER), 1, filePtr);
+	//  2. Read file header to find where and how much to write image
+	BMPFILEHEADER bmpFileHeader;
+	BMPINFOHEADER bmpInfoHeader;
+	fread(&bmpFileHeader, sizeof(BMPFILEHEADER), 1, filePtr);
+	fread(&bmpInfoHeader, sizeof(BMPINFOHEADER), 1, filePtr);
 
-    //  3. Write all file info
-    fseek(filePtr, bmpFileHeader.bfOffBits, SEEK_SET);
-    int imgSize = bmpInfoHeader.ImageSize;
-    int count = fwrite(*img, sizeof(unsigned char), imgSize, filePtr);
-    if (count == 0) printf("ERROR: Could not write anything\n");
-    if (count != imgSize) return count;
-    fclose(filePtr);
+	//  3. Write all file info
+	fseek(filePtr, bmpFileHeader.bfOffBits, SEEK_SET);
+	int imgSize = bmpInfoHeader.ImageSize;
+	int count = fwrite(*img, sizeof(unsigned char), imgSize, filePtr);
+	if (count == 0) printf("ERROR: Could not write anything\n");
+	if (count != imgSize) return count;
+	fclose(filePtr);
 
-    return 0;
+	return 0;
 }
 /*
 void is_neighbor(Ptr<Int> hl, Ptr<Int> hm, Ptr<Int> hord, Ptr<Int> hr)
