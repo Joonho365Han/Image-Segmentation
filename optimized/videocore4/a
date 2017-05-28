@@ -1,6 +1,7 @@
 #!/bin/bash
 
-cp test7.bmp image.bmp
-cp test7.bmp image_mask.bmp
-gcc segmentation.cpp -O1 -lm
-time ./a.out
+cp test2.bmp image.bmp
+cp test2.bmp image_mask.bmp
+#gcc segmentation.cpp -O1 -lm
+make QPU=1 qpu
+time sudo ./qpu

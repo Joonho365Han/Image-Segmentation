@@ -1,5 +1,5 @@
 # Filename to compile
-FILE=segmentation
+FILE=qpu
 
 # Root directory of QPULib repository
 ROOT = libqpu/Lib

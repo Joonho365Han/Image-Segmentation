@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <math.h>
+#include <time.h>
 #include "QPULib.h"
 
 // Higher temperature smoothens the image more. It's like a pre-filter.
@@ -48,6 +49,19 @@ struct Node //struct used for linked lists
 	int column;
 	struct Node *next;
 };
+
+struct timespec diff(struct timespec start, struct timespec end)
+{
+  struct timespec temp;
+  if ((end.tv_nsec-start.tv_nsec)<0) {
+    temp.tv_sec = end.tv_sec-start.tv_sec-1;
+    temp.tv_nsec = 1000000000+end.tv_nsec-start.tv_nsec;
+  } else {
+    temp.tv_sec = end.tv_sec-start.tv_sec;
+    temp.tv_nsec = end.tv_nsec-start.tv_nsec;
+  }
+  return temp;
+}
 
 int load_bitmap(char *filename, BMPINFOHEADER *bmpInfoHeader, unsigned char **img)
 {
@@ -155,6 +169,10 @@ int main(){
     int R2 = byte_offset*byte_offset;
     int D  = 2*byte_offset + 1;
     int h, i, j, k, l, m;
+    
+    struct timespec time1, time2, result;
+    clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &time1);
+    
     /*char is_neighbor[D*D];
     for (l = -byte_offset; l <= byte_offset; l++)
 		for (m = -byte_offset; m <= byte_offset; m++)
@@ -162,36 +180,9 @@ int main(){
 	SharedArray<int> hl(D), hm(D), hord(D), hr(D);
 	auto k_eq = compile(is_neighbor);
 	k_eq.setNumQPUs(8);
-    for (h = 0; h < ITERATIONS; h++)
-    {
-        //  In the beginning of every iteration:
-        //      img_copy is the one that was iterated,
-        //      img_mask is the result of iteration.
-        //  Data always flows from img_copy -> img_mask.
-        //  Switch these two to modify the content of img_mask again.
-        unsigned char *img_to_modify = img_mask;
-        img_mask = img_copy;
-        img_copy = img_to_modify;
-
-        for (i = byte_offset; i < img_info.Height-byte_offset; i++)
-            for (j = byte_offset; j < img_info.Width-byte_offset; j++)
-                for (k = 0; k < byte_depth; k++)
-                {
-                    // Initialize Gibbs CDF array
-                    double gibbs_CDF[257];      // Gibbs PDF for this pixel (i,j)'s
-                                                // luminance to be 0,1...255 or lower 
-                                                // based on Markovian neighbor values.
-                           gibbs_CDF[0] = 0;    // The first element is for making CDF 
-                                                // generation easier by having an index 0
-                                                // for lum -1, whose gibbs_PDF is 0.
-                    int lum;
-                    for (lum = 0; lum <= 255; lum++)
-                        gibbs_CDF[lum+1] = R2 << 2;
-
                     // Calculate Equipotential of each luminance using Markovian Neighbors
                     for (l = -byte_offset; l <= byte_offset; l+=1){
-						int n;
-						for (n = 0; n < D; n++)
+						for (int n = 0; n < D; n++)
 						{
 							hl[n]   = l;
 							hm[n]   = n - byte_offset;
@@ -199,102 +190,20 @@ int main(){
 							hr[n]   = 0;
 						}
 						k_eq(&hl, &hm, &hord, &hr);
+					}/*
+                    for (l = -byte_offset; l <= byte_offset; l+=1){
+						int n = D;
                         for (m = -byte_offset; m <= byte_offset; m+=1)
-                            gibbs_CDF[img_copy[(i+l)*byte_width+(j+m)*byte_depth+k]+1] -= (hr[m + byte_offset]) ? 5 : 0;
-					}
-                            
-                    // Generate CDF (Must be scalar)
-                    for (lum = 0; lum <= 255; lum++)
-                        gibbs_CDF[lum+1] = gibbs_CDF[lum] + exp(-gibbs_CDF[lum+1]/TEMPERATURE);
-
-                    // Threshold CDF ///// Vectorizable
-                    for (lum = 0; lum <= 255; lum++)
-                        if (gibbs_CDF[lum+1]/gibbs_CDF[256] > THRESHOLD)
-                        {
-                            img_mask[i*byte_width+j*byte_depth+k] = (unsigned char) lum;
-                            lum = 256;
-                        }
-                }
-        printf("Iteration %d done.\n", h+1);
-    }
-
-    //  4. Save thresholded MRF image
-    status = overwrite_bitmap(img_mask_name, &img_mask);
-    if (status == -1) {
-        printf("ERROR: 6. Could not open file\n");
-        return 0;
-    } else if (status != 0) {
-        printf("ERROR: 7. Only wrote %d bytes\n", status);
-        return 0;
-    }
-    
-    //  5. Produce Mask from Thresholded MRF using BFS
-    int midX = img_info.Height / 2;
-    int midY = img_info.Width  / 2;
-    unsigned char *center   = &img_mask[midX * byte_width + midY * byte_depth];
-    unsigned char *BFSArray = (unsigned char*) calloc(img_info.ImageSize, 1);
-    struct Node   *visiting = (struct Node*) malloc(sizeof(struct Node));
-                   visiting->row    = midX;
-                   visiting->column = midY;
-                   visiting->next   = NULL;
-    struct Node   *last_in_queue = visiting;
-    while (visiting != NULL) 
-    {
-        //  Check all 4 vertical and horizontal neighbors.
-        int past_col=-1, col=-1, row=0;
-        for (i=0; i<4; i++, past_col=col, col=row*-1, row=past_col) ///// vectorizable
-        {
-            //  Index of the neighbor
-            int x = visiting->row+row;
-            int y = visiting->column+col;
-
-            //  Tests
-            // 1. The visiting struct Node is always "valid (has 1 same RGB as center)"
-            // 2. If neighbor is not valid, move on. If "valid" and unvisited, mark valid and add to queue
-            // 3. On mask, 0 is unvisited, 1 is valid
-            if ((x|y) < 0 || x >= img_info.Height || y >= img_info.Width) //  Boundary check
-                continue;
-            if (BFSArray[x*byte_width + y*byte_depth]) //  If already marked valid, don't check again
-                continue;
-            for (j = 0; j < byte_depth; j++)
-                j = (img_mask[x*byte_width + y*byte_depth + j] == center[j]) ? byte_depth+1 : j;
-            if (j < byte_depth+1)
-                continue;
-
-            //  The pixel is valid. Mark as valid and add to queue.
-            for (j = 0; j < byte_depth; j++)
-                BFSArray[x*byte_width + y*byte_depth + j] = 1;
-
-            last_in_queue->next = (struct Node*) malloc(sizeof(struct Node));
-            last_in_queue       = last_in_queue->next;
-
-            last_in_queue->row    = x;
-            last_in_queue->column = y;
-            last_in_queue->next   = NULL;
-        }
-       
-        struct Node *to_visit = visiting->next;
-        free(visiting);
-        visiting = to_visit; // free struct Node and move on to the next on the list
-    }
-
-    //  6. Apply mask to image
-    for (g = 0; g < img_info.ImageSize; g++)
-        img[g] *= (int) BFSArray[g];
-    
-    //  7. Save segmented image
-    status = overwrite_bitmap(img_name, &img);
-    if (status == -1) {
-        printf("ERROR: 4. Could not open file\n");
-        return 0;
-    } else if (status != 0) {
-        printf("ERROR: 5. Only wrote %d bytes\n", status);
-        return 0;
-    }
+                            n -= (is_neighbor[(l+byte_offset)*D+m+byte_offset]) ? 5 : 0;
+					}*/
+    clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &time2);
+    result = diff(time1, time2);
+    long int code_duration = 1000000000 * result.tv_sec + result.tv_nsec;
+    printf("\n::: Duration: %ldns\n\n", code_duration);
+						
 
     free(img);
     free(img_mask);
     free(img_copy);
-    free(BFSArray);
     return 0;
 }
